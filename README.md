@@ -9,6 +9,12 @@ versus proposed.
 > **Status:** in development. This is a deterministic mock pipeline plus a
 > scaffolded "Phase A" design. It is **not** pilot-ready, and it does **not**
 > contain a real LLM-based experimental system.
+>
+> **Repository contents:** this initial repository contains only this README
+> and four documentation files: `docs/experimental_protocol_proposed.md`,
+> `docs/glossary.md`, `docs/research_questions.md`, and `docs/open_questions.md`.
+> Source code, tests, scripts, configuration, and other local documentation are
+> not yet part of this repository.
 
 ## Research question (provisional)
 
@@ -35,9 +41,10 @@ not a settled question**:
   would need to detect — cannot currently be produced by this pipeline.
 
 See `docs/open_questions.md` for the full register of what is blocking this
-direction, and `docs/experimental_protocol.md` / `docs/experimental_protocol_proposed.md`
-for the (unapproved, mutually conflicting) design drafts this direction sits
-inside.
+direction, and `docs/experimental_protocol_proposed.md` (the proposed, unapproved
+protocol draft included in this repository) together with the local-only
+`docs/experimental_protocol.md` for the two mutually conflicting design drafts
+this direction sits inside.
 
 ## What exists
 
@@ -96,6 +103,9 @@ invoked.
 
 ## Repository map
 
+This map describes the full local workspace. Only the documentation files
+listed in the status note above are part of the initial repository.
+
 | Path | Contents |
 |---|---|
 | `src/apart/` | Legacy mock pipeline + Phase A scaffold |
@@ -107,6 +117,10 @@ invoked.
 | `data/`, `results/` | Input/output placeholders; generated results are git-ignored |
 
 ## Setup and tests
+
+These commands describe the local development workspace; they require the
+source tree, `requirements.txt`, and `pytest.ini`, which are not part of the
+documentation-only initial repository.
 
 1. Create and activate a virtual environment:
    ```bash
@@ -135,20 +149,24 @@ invoked.
 
 ## Documentation
 
-- `docs/decision_log.md` - **authoritative record of confirmed decisions.**
-- `docs/experiment_design.md` - description of the current mock pipeline.
-- `docs/experimental_log.md` - record of executed deterministic runs.
-- `docs/experimental_protocol.md` - protocol draft containing proposed
-  approaches (two concatenated drafts with conflicting terminology; treat with
-  caution).
-- `docs/experimental_protocol_proposed.md` - proposed revision containing
-  proposed approaches; **not approved.**
+**Included in this repository:**
+
+- `docs/experimental_protocol_proposed.md` - the proposed protocol revision
+  (contains proposed approaches; **not approved**).
 - `docs/research_questions.md` - placeholder; the research question has not yet
   been consolidated into a formal, numbered list.
 - `docs/glossary.md` - terminology currently under discussion; no terms are
   formally defined yet.
 - `docs/open_questions.md` - unresolved design decisions (research and process
   questions), with status, priority, and what each one blocks.
+
+**Local files not included in this repository:**
+
+- `docs/decision_log.md` - **authoritative record of confirmed decisions.**
+- `docs/experiment_design.md` - description of the current mock pipeline.
+- `docs/experimental_log.md` - record of executed deterministic runs.
+- `docs/experimental_protocol.md` - an earlier protocol draft (two concatenated
+  drafts with conflicting terminology); **not included in this repository.**
 
 ## Open design questions (unresolved)
 
