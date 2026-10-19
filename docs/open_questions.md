@@ -112,7 +112,12 @@ proposed protocol.*
 with 6 categories. Suggestion to changes in 
 changes to the categories, the commitment definition, or the explicitness
 dimension?
-
+- Statement of intention: “I’m going to choose B”
+- Commitment:  “I promise to choose B” (requires explicit undertaking language)
+- Proposal: “We should both choose B”
+- Directive: “Choose B”
+- Exploratory: “What do you think about option B?”
+- Ambiguous: doesn’t clearly fit the above
 **What's resolved:** The proposed protocol defines 12 fields (§3), a
 speech-act codebook with 6 categories (§4), and a provisional commitment
 definition requiring self-reference, explicit undertaking language, action
