@@ -118,6 +118,7 @@ dimension?
 - Directive: “Choose B”
 - Exploratory: “What do you think about option B?”
 - Ambiguous: doesn’t clearly fit the above
+  
 **What's resolved:** The proposed protocol defines 12 fields (§3), a
 speech-act codebook with 6 categories (§4), and a provisional commitment
 definition requiring self-reference, explicit undertaking language, action
