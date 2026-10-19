@@ -1,183 +1,149 @@
 # APART Experiment
 
-Work-in-progress research scaffold for a multi-agent AI-safety experiment on
-communication-mediated coordination. This repository is **not finalized**: the
-experimental design, action-label semantics, and analysis protocol are still
-under discussion. See [Documentation](#documentation) for what is confirmed
-versus proposed.
+A multi-agent AI-safety experiment testing whether monitors that see both
+what agents **say** and what they **do** detect harmful coordination better
+than monitors that see either alone.
 
-> **Status:** in development. This is a deterministic mock pipeline plus a
-> scaffolded "Phase A" design. It is **not** pilot-ready, and it does **not**
-> contain a real LLM-based experimental system.
->
-> **Repository contents:** this initial repository contains only this README
-> and four documentation files: `docs/experimental_protocol_proposed.md`,
-> `docs/glossary.md`, `docs/research_questions.md`, and `docs/open_questions.md`.
-> Source code, tests, scripts, configuration, and other local documentation are
-> not yet part of this repository.
+> **Status:** Documentation only. Source code, tests, and scripts exist
+> locally but are not yet part of this repository. No LLM-based system or
+> monitor is implemented. The experimental design is under active
+> discussion — see [`docs/open_questions.md`](docs/open_questions.md) for
+> what is decided versus open.
 
-## Research question (provisional)
+---
 
-A current research direction for this project is whether combining what
-agents **say** (public announcements/messages) with what they **do** (final
-actions) improves detection of communication-mediated collusion, compared to
-looking at either alone. This is stated here as a **provisional direction,
-not a settled question**:
+## Research question
 
-- The operational definition of "collusion" (as distinct from a bare safety
-  violation, mutual cooperation, or harmful-but-undelivered coordination) is
-  **unresolved** — see `docs/open_questions.md`, Q1.
-- Scenario design (what scenarios would let an agent's statement and its
-  action actually diverge) is **unresolved** — the current deterministic
-  mock pipeline's messages are constructed to equal the announcing agent's
-  own action, so no existing scenario currently lets them differ.
-- The monitoring protocol (what a monitor would see, and how its output
-  would be scored) is **unresolved and internally inconsistent** between the
-  two existing protocol drafts — see `docs/open_questions.md`, Q3 and Q4.
-- **The existing deterministic mock pipeline cannot, by itself, establish
-  whether combining statements and actions improves detection.** No monitor
-  of any kind is implemented, and the message-equals-action construction
-  above means statement/action divergence — the thing such a comparison
-  would need to detect — cannot currently be produced by this pipeline.
+Does structuring the evidence a monitor receives — separating what agents
+announce from what they execute — improve detection of
+communication-mediated collusion in a two-player stag-hunt game?
 
-See `docs/open_questions.md` for the full register of what is blocking this
-direction, and `docs/experimental_protocol_proposed.md` (the proposed, unapproved
-protocol draft included in this repository) together with the local-only
-`docs/experimental_protocol.md` for the two mutually conflicting design drafts
-this direction sits inside.
+**Specifically:** Four monitor views (M1–M4) each see a different slice of
+the same trajectory. The primary comparison is M4 (evidence restructured
+into labeled fields) vs M3 (same evidence, raw concatenation). An
+M3-ensemble (5 independent calls, majority vote) controls for compute.
+
+| Monitor | Sees | Does not see |
+|---|---|---|
+| M1 | Public messages only | Actions, welfare, plans |
+| M2 | Realized actions + welfare | Messages, plans |
+| M3 | Messages + actions + welfare (raw) | Plans, labels |
+| M4 | Same as M3, restructured into fields | Plans, labels |
+
+See [`docs/experimental_protocol_proposed.md`](docs/experimental_protocol_proposed.md)
+for the full proposed design and
+[`docs/open_questions.md`](docs/open_questions.md) for unresolved
+decisions.
+
+---
 
 ## What exists
 
-### Legacy deterministic pipeline (`src/apart/`)
+### Deterministic mock pipeline (`src/apart/`)
 
-A two-condition test of communication delivery and execution plumbing, using
-deterministic mock agents:
+A two-condition test of communication delivery and execution plumbing
+using deterministic mock agents. Not an experimental system — a scaffold.
 
-- Conditions: `communication_enabled` / `communication_disabled`
-  (`src/apart/conditions.py`).
-- `MockAgent` uses a fixed threshold rule; the receiver copies the sender's
-  delivered action or falls back to its own threshold (`src/apart/agents.py`).
-- `TwoAgentEnvironment` draws independent `resource_level` observations and
-  labels outcomes (`src/apart/environment.py`).
-- Two analyses: a seed-based run (`src/apart/runner.py`) and an exhaustive
-  11 x 11 = 121-pair enumeration (`src/apart/exhaustive.py`).
+- **Conditions:** `communication_enabled` / `communication_disabled`.
+- **Agents:** Fixed-threshold sender and receiver; no LLM is invoked.
+- **Exhaustive baseline:** 121 ordered `(resource_level_a, resource_level_b)`
+  pairs × 2 conditions = 242 trials. Unchanged and must remain unchanged.
 
-The legacy pipeline is a deterministic test of the communication-delivery and
-execution plumbing. Its results should not be interpreted as evidence about
-real agents or as validation of the proposed safety hypothesis.
+### Sender-receiver interaction scaffold (`src/apart/phase_a_*.py`)
 
-### Limitations of the current deterministic mock fixtures
+A three-condition design for testing message delivery effects:
 
-Both the legacy and Phase A pipelines use fixed, non-learned, non-LLM logic.
-Concretely, this means:
+| Condition | What the receiver gets |
+|---|---|
+| `NO_MSG` | No message |
+| `NEUTRAL_MSG` | A message with no action content |
+| `INFORM_MSG` | A message proposing coordination on Divert (B) |
 
-- **Messages equal actions by construction.** The sender's announced message
-  is always its own chosen action's label, verbatim (legacy), or the raw
-  action label under the "informative" condition (Phase A). No scenario
-  currently lets an agent's statement and its action disagree.
-- **No real model or monitor is invoked anywhere.** `ModelClient` in
-  `src/apart/models.py` is a commented-out protocol stub; Phase A's
-  "receiver" is a lookup table of predefined responses
-  (`DeterministicFakeReceiver`), not a decision procedure.
-- **Results characterize the mock program, not real agents.** Any observed
-  effect (e.g. communication increasing a cooperation rate) is a property of
-  this specific deterministic rule set, not evidence about how a real
-  language-model agent would behave. See `docs/experimental_log.md` §E for
-  the fuller discussion of this limitation on the one executed experiment.
+Currently uses a **scripted sender** and a **deterministic fake receiver**
+(test fixture, not a model). Message content is placeholder — designing
+real message templates is an open decision (see
+[`docs/open_questions.md`](docs/open_questions.md), section D).
 
-### Phase A pipeline (`src/apart/phase_a_*.py`)
+### Limitations
 
-A scaffolded three-condition design: `no_message` / `neutral_message` /
-`informative_message` (`src/apart/phase_a_conditions.py`). It uses a scripted
-sender, a **deterministic fake receiver** (a test fixture, not a model), a
-synthetic A/B response parser, and McNemar/power utilities. No real model is
-invoked.
+- **Messages equal actions by construction.** The sender's message is its
+  own action label. No scenario currently lets statement and action diverge.
+- **No real model or monitor exists.** The receiver is a lookup table; no
+  LLM is called anywhere.
+- **Results characterize the mock program, not real agents.** Observed
+  effects are properties of the deterministic rules, not evidence about
+  language-model behavior.
 
-## Not implemented
+---
 
-- **No LLM / model integration.** `ModelClient` is a commented-out protocol
-  (`src/apart/models.py`); the receiver is a deterministic mock or fake.
-- **The monitor-evaluation components described in the protocol are not
-  implemented in code** (monitors, annotation fields, private-plan capture,
-  safety-outcome labeling, and M1-M4 evidence sets).
+## Not yet implemented
+
+| Component | Status |
+|---|---|
+| LLM integration | `ModelClient` is a commented-out stub |
+| Monitor evaluation (M1–M4) | Not implemented |
+| Annotation fields (12-field schema) | Not implemented |
+| Safety-outcome labeling | Specified; not implemented |
+| Scenario corpus | No scenarios exist in the repo |
+| Private-plan capture | Not implemented |
+
+---
 
 ## Repository map
 
-This map describes the full local workspace. Only the documentation files
-listed in the status note above are part of the initial repository.
-
 | Path | Contents |
 |---|---|
-| `src/apart/` | Legacy mock pipeline + Phase A scaffold |
-| `tests/` | Unit/integration tests (including `test_phase_a_*`) |
+| `src/apart/` | Mock pipeline + sender-receiver scaffold |
+| `tests/` | Unit and integration tests |
 | `scripts/` | `run_experiment.py`, `analyze_results.py`, `smoke_test.py` |
-| `docs/` | Protocol drafts, decision log, design/experiment notes |
+| `docs/` | Protocol drafts, open decisions, glossary |
 | `config.py` | Run configuration dataclass |
 | `pytest.ini`, `requirements.txt` | Test configuration and dependencies |
-| `data/`, `results/` | Input/output placeholders; generated results are git-ignored |
+| `data/`, `results/` | Placeholders; generated results are git-ignored |
 
-## Setup and tests
+> **Note:** Only the documentation files are part of the initial
+> repository. The source tree is local only.
 
-These commands describe the local development workspace; they require the
-source tree, `requirements.txt`, and `pytest.ini`, which are not part of the
-documentation-only initial repository.
+---
 
-1. Create and activate a virtual environment:
-   ```bash
-   python3 -m venv .venv
-   source .venv/bin/activate
-   ```
-2. Install the (single) declared dependency:
-   ```bash
-   pip install -r requirements.txt
-   ```
-3. Run the test suite:
-   ```bash
-   python -m pytest tests/ -v
-   ```
-   `pytest.ini` sets `pythonpath = . src`, so the `apart` package under `src/`
-   is importable without installation.
+## Setup
 
-## Project instructions
+Requires the source tree (not yet in this repository).
 
-- `AGENTS.md` - shared, tool-agnostic rules for any coding agent working in
-  this repository.
-- `CLAUDE.md` - Claude-Code-specific workflow instructions, on top of the
-  shared rules in `AGENTS.md`.
-- `CONTRIBUTING.md` - how to propose a change, and how to label it
-  confirmed/proposed/unresolved.
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+python -m pytest tests/ -v
+```
+
+`pytest.ini` sets `pythonpath = . src`, so the `apart` package is
+importable without installation.
+
+---
 
 ## Documentation
 
-**Included in this repository:**
+| File | What it covers | Status |
+|---|---|---|
+| [`docs/open_questions.md`](docs/open_questions.md) | Unresolved design decisions, grouped by dependency | **Active — start here** |
+| [`docs/experimental_protocol_proposed.md`](docs/experimental_protocol_proposed.md) | 12-field annotation schema, M1–M4 evidence sets, speech-act codebook | Proposed, not approved |
+| [`docs/research_questions.md`](docs/research_questions.md) | Research question register | Placeholder |
+| [`docs/glossary.md`](docs/glossary.md) | Terminology | Placeholder (definitions conflict across docs) |
 
-- `docs/experimental_protocol_proposed.md` - the proposed protocol revision
-  (contains proposed approaches; **not approved**).
-- `docs/research_questions.md` - placeholder; the research question has not yet
-  been consolidated into a formal, numbered list.
-- `docs/glossary.md` - terminology currently under discussion; no terms are
-  formally defined yet.
-- `docs/open_questions.md` - unresolved design decisions (research and process
-  questions), with status, priority, and what each one blocks.
+**Local files not in this repository:**
 
-**Local files not included in this repository:**
+- `docs/decision_log.md` — authoritative record of confirmed decisions.
+- `docs/experiment_design.md` — mock pipeline description.
+- `docs/experimental_log.md` — record of executed deterministic runs.
+- `docs/experimental_protocol.md` — earlier protocol draft (two
+  concatenated drafts with conflicting terminology).
 
-- `docs/decision_log.md` - **authoritative record of confirmed decisions.**
-- `docs/experiment_design.md` - description of the current mock pipeline.
-- `docs/experimental_log.md` - record of executed deterministic runs.
-- `docs/experimental_protocol.md` - an earlier protocol draft (two concatenated
-  drafts with conflicting terminology); **not included in this repository.**
+---
 
-## Open design questions (unresolved)
+## Agent instructions
 
-All currently tracked unresolved design and process questions are listed in
-`docs/open_questions.md`, with status, priority, and what each one blocks.
-They are not restated here, to avoid two descriptions of the same question
-drifting out of sync. As of this writing that register covers: the
-safety-violation definition, the estimand/analysis unit, which protocol
-draft governs, the M1-M4 monitor definitions, mapping trial records to a
-safety outcome, the annotation/private-plan schema, Phase A's approval
-status, the Phase A message-stimulus content, the `results/*.jsonl`
-commit-versus-regenerate policy, and the scenario population/sample size
-for a future pilot.
-
+- `AGENTS.md` — shared rules for any coding agent working in this repo.
+- `CLAUDE.md` — Claude Code–specific workflow instructions.
+- `CONTRIBUTING.md` — how to propose changes and label them
+  confirmed/proposed/unresolved.
