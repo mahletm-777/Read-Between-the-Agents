@@ -113,6 +113,8 @@ class ModelResponse:
     model: str
     snapshot: str
     provider_seed: Optional[int]
+    served_model: Optional[str] = None
+    served_provider: Optional[str] = None
 
 
 @dataclass(frozen=True)
@@ -512,6 +514,7 @@ class ModelClient:
         backoff_base_s: float = 1.0,
         sleep: Callable[[float], None] = time.sleep,
         spend_guard: Optional[SpendGuard] = None,
+        provider_order: Optional[Sequence[str]] = None,
         load_env: bool = True,
     ) -> None:
         if load_env:
@@ -533,6 +536,7 @@ class ModelClient:
             elif model != spend_guard.config.model:
                 raise SpendConfigError("model does not match the spend config model")
         self.spend_guard = spend_guard
+        self.provider_order = list(provider_order or [])
         self.model = model or os.environ.get("APART_MODEL") or "gpt-4o-mini"
         self.snapshot = snapshot or os.environ.get("APART_MODEL_SNAPSHOT") or self.model
         self.timeout_s = float(
@@ -569,6 +573,8 @@ class ModelClient:
         }
         if seed is not None:
             payload["seed"] = seed
+        if self.provider_order:
+            payload["provider"] = {"order": list(self.provider_order)}
         input_bound = _input_token_bound(payload["messages"])
         last_error: Optional[BaseException] = None
         for attempt in range(self.max_attempts):
@@ -613,6 +619,8 @@ class ModelClient:
                 model=self.model,
                 snapshot=self.snapshot,
                 provider_seed=seed,
+                served_model=served_model,
+                served_provider=provider,
             )
         raise ApiError(f"model call failed after {self.max_attempts} attempts") from last_error
 
@@ -658,12 +666,14 @@ class FakeClient:
         responder: Optional[Callable[[Sequence[dict], float, Optional[int], int], str]] = None,
         model: str = "fake-model",
         snapshot: str = "dry-run",
+        provider_order: Optional[Sequence[str]] = None,
     ) -> None:
         self._responder = responder or (
             lambda messages, temperature, seed, index: dry_run_response(messages)
         )
         self.model = model
         self.snapshot = snapshot
+        self.provider_order = list(provider_order or [])
         self.calls: list[dict] = []
 
     def call_model(
@@ -689,6 +699,8 @@ class FakeClient:
             model=self.model,
             snapshot=self.snapshot,
             provider_seed=seed,
+            served_model=self.model,
+            served_provider=None,
         )
 
 

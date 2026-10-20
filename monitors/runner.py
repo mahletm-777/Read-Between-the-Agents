@@ -45,7 +45,8 @@ def system_prompt_sha256() -> str:
 
 
 def _call_with_retries(
-    client, base_messages, view, temperature, provider_seed, max_tokens, raw_sink=None
+    client, base_messages, view, temperature, provider_seed, max_tokens,
+    raw_sink=None, meta_sink=None
 ):
     """§5.5: up to 3 attempts; retry prompt after an invalid score."""
     messages = list(base_messages)
@@ -63,6 +64,13 @@ def _call_with_retries(
         last_response_id = response.response_id
         if raw_sink is not None:
             raw_sink.append(response.text)
+        if meta_sink is not None:
+            meta_sink.update(
+                {
+                    "served_model": response.served_model,
+                    "served_provider": response.served_provider,
+                }
+            )
         parsed = parse_response(response.text, view)
         if parsed.valid:
             return parsed, attempts, last_response_id, "ok"
@@ -85,7 +93,8 @@ def write_raw_response(raw_dir: Path, seed: int, view: str, k: int, texts: Seque
 
 
 def _record(trace, display, view, k, temperature, provider_seed, digest, parsed, status,
-            attempts, response_id, created_utc, model, snapshot):
+            attempts, response_id, created_utc, model, snapshot,
+            max_tokens, provider_order, served_model, served_provider):
     usable = parsed is not None and parsed.valid
     return {
         "seed": trace.seed,
@@ -95,7 +104,11 @@ def _record(trace, display, view, k, temperature, provider_seed, digest, parsed,
         "model": model,
         "snapshot": snapshot,
         "temperature": temperature,
+        "max_tokens": max_tokens,
+        "provider_order": list(provider_order),
         "provider_seed": provider_seed,
+        "served_model": served_model,
+        "served_provider": served_provider,
         "prompt_version": PROMPT_VERSION,
         "prompt_sha256": digest,
         "score": parsed.score if usable else None,
@@ -130,6 +143,7 @@ def run_corpus(
     stamp = created_utc or datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     model = getattr(client, "model", None)
     snapshot = getattr(client, "snapshot", None)
+    provider_order = list(getattr(client, "provider_order", []))
     observables = [(trace, observable(trace)) for trace in traces]
     records: list[dict] = []
     ensemble_scores: dict[int, list[Optional[int]]] = {trace.seed: [] for trace in traces}
@@ -149,12 +163,16 @@ def run_corpus(
             if view == "M3-ens":
                 for k in range(calls):
                     raw_texts: list[str] = []
+                    meta: dict = {}
                     parsed, attempts, response_id, status = _call_with_retries(
-                        client, base, view, temperature, k, max_tokens, raw_sink=raw_texts
+                        client, base, view, temperature, k, max_tokens,
+                        raw_sink=raw_texts, meta_sink=meta,
                     )
                     records.append(
                         _record(trace, display, view, k, temperature, k, digest, parsed,
-                                status, attempts, response_id, stamp, model, snapshot)
+                                status, attempts, response_id, stamp, model, snapshot,
+                                max_tokens, provider_order,
+                                meta.get("served_model"), meta.get("served_provider"))
                     )
                     if raw_dir is not None:
                         write_raw_response(raw_dir, trace.seed, view, k, raw_texts)
@@ -163,12 +181,16 @@ def run_corpus(
                     )
             else:
                 raw_texts = []
+                meta = {}
                 parsed, attempts, response_id, status = _call_with_retries(
-                    client, base, view, temperature, 0, max_tokens, raw_sink=raw_texts
+                    client, base, view, temperature, 0, max_tokens,
+                    raw_sink=raw_texts, meta_sink=meta,
                 )
                 records.append(
                     _record(trace, display, view, 0, temperature, 0, digest, parsed,
-                            status, attempts, response_id, stamp, model, snapshot)
+                            status, attempts, response_id, stamp, model, snapshot,
+                            max_tokens, provider_order,
+                            meta.get("served_model"), meta.get("served_provider"))
                 )
                 if raw_dir is not None:
                     write_raw_response(raw_dir, trace.seed, view, 0, raw_texts)

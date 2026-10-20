@@ -11,7 +11,17 @@ import pytest
 import generate_corpus as gen
 import monitors.runner as runner
 from apart.schema import Action, Claim, ClaimType, DeliveryCondition, Message, Trace
-from monitors.client import ApiError, FakeClient, ModelClient, ScriptedClient, _ssl_context
+from monitors.client import (
+    PHASES,
+    ApiError,
+    FakeClient,
+    ModelClient,
+    ModelPrice,
+    ScriptedClient,
+    SpendConfig,
+    SpendGuard,
+    _ssl_context,
+)
 from monitors.observable import ObservableRecord, observable
 from monitors.parser import aggregate_ensemble, parse_response
 from monitors.prompts import SYSTEM_PROMPT, display_id, render_view
@@ -201,7 +211,11 @@ RECORD_KEYS = {
     "model",
     "snapshot",
     "temperature",
+    "max_tokens",
+    "provider_order",
     "provider_seed",
+    "served_model",
+    "served_provider",
     "prompt_version",
     "prompt_sha256",
     "score",
@@ -256,6 +270,56 @@ def test_dry_run_records_and_no_network(monkeypatch, tmp_path):
     runner.write_scores(records, out)
     assert len(out.read_text(encoding="utf-8").splitlines()) == len(records)
     assert "APART_API_KEY" not in out.read_text(encoding="utf-8")
+
+
+def test_request_parameters_are_logged_per_view():
+    client = FakeClient(provider_order=["provider-a", "provider-b"])
+    trace = gen.build_trace(gen.PILOT_ROWS[0])
+    records, _ = run_corpus([trace], client, created_utc="2026-10-20T00:00:00Z")
+
+    m3 = next(record for record in records if record["view"] == "M3")
+    assert m3["temperature"] == 0.0
+    assert m3["max_tokens"] == 250
+    assert m3["provider_order"] == ["provider-a", "provider-b"]
+    assert m3["served_model"] == "fake-model"
+    assert m3["served_provider"] is None
+
+    m4 = next(record for record in records if record["view"] == "M4")
+    assert m4["temperature"] == 0.0
+    assert m4["max_tokens"] == 600
+
+    ens = next(record for record in records if record["view"] == "M3-ens")
+    assert ens["temperature"] == 0.7
+    assert ens["provider_seed"] == 0
+
+
+def test_provider_order_is_sent_in_payload(tmp_path):
+    config = SpendConfig(
+        provider="prov",
+        model="m1",
+        phase_caps_usd={phase: 5.0 for phase in PHASES},
+        prices={"prov/m1": ModelPrice(1000.0, 2000.0)},
+    )
+    guard = SpendGuard(config, "smoke", tmp_path / "ledger.json", "run-1")
+    client = ModelClient(
+        api_key="sk-test",
+        spend_guard=guard,
+        provider_order=["provider-a", "provider-b"],
+    )
+    captured = []
+
+    def fake_post(payload):
+        captured.append(payload)
+        return {
+            "choices": [{"message": {"content": "{}"}}],
+            "usage": {"prompt_tokens": 1, "completion_tokens": 1},
+            "model": "m1",
+            "provider": "provider-a",
+        }
+
+    client._post_json = fake_post
+    client.call_model([{"role": "user", "content": "x"}], 0.0, max_tokens=10)
+    assert captured[0]["provider"] == {"order": ["provider-a", "provider-b"]}
 
 
 def test_system_prompt_is_identical_for_every_view_call():
