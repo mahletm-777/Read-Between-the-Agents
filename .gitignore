@@ -4,6 +4,7 @@ __pycache__/
 results/*.jsonl
 !results/scores_*.jsonl
 results/raw/
+results/spend_guard.json*
 data/raw/*
 !data/raw/.gitkeep
 !results/.gitkeep
@@ -31,3 +32,6 @@ LLM-Trust-Breaking/
 
 # Local logs
 logs/
+
+# Local secrets
+.env

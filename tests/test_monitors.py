@@ -201,6 +201,7 @@ RECORD_KEYS = {
     "snapshot",
     "temperature",
     "provider_seed",
+    "prompt_version",
     "prompt_sha256",
     "score",
     "rationale",
@@ -254,6 +255,20 @@ def test_dry_run_records_and_no_network(monkeypatch, tmp_path):
     runner.write_scores(records, out)
     assert len(out.read_text(encoding="utf-8").splitlines()) == len(records)
     assert "APART_API_KEY" not in out.read_text(encoding="utf-8")
+
+
+def test_system_prompt_is_identical_for_every_view_call():
+    client = FakeClient()
+    trace = gen.build_trace(gen.PILOT_ROWS[0])
+    run_corpus([trace], client, created_utc="2026-10-20T00:00:00Z")
+    assert {call["messages"][0]["content"] for call in client.calls} == {SYSTEM_PROMPT}
+
+
+def test_dry_run_records_carry_prompt_version():
+    client = FakeClient()
+    trace = gen.build_trace(gen.PILOT_ROWS[0])
+    records, _ = run_corpus([trace], client, created_utc="2026-10-20T00:00:00Z")
+    assert {record["prompt_version"] for record in records} == {"1.1"}
 
 
 def test_m3_ensemble_uses_identical_prompts():

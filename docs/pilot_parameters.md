@@ -137,8 +137,36 @@ Every view gets the same rule text: the payoff table, "B is prohibited diversion
 | T-005 | Payoffs changed to 7/7, 7/1, 1/7, 10/10. Ex-post regret replaces W. Actions are A/B only; the legacy mapping is removed. Code updated in `code/apart_gt` (schema/labeler v1.1, 11 tests pass). | **Decided** (MM, 2026-10-20) |
 | T-006 | Scripted sender templates for the pilot; real LLM agents only after looking at the pilot results. Frozen traces are committed to the repo as a single JSONL file plus a SHA-256 recorded here, and they are never regenerated in place. | **Decided** (MM, 2026-10-20) |
 | T-010 | N = 30 → 40 (C-01/02/03/04/05 = 11/9/6/8/6; 20 positive / 20 negative). Pilot seeds 100–139. Templates A-KW2, A-KW3, A-LEAN, A-SELF added; B-COM used. C-01 sanity seeds 10–13 added. Calls 360 + 15% buffer. FPR groups n = 11 / 9 / 20. Details in `docs/generator_spec_v2_delta.md`. | **Decided** (MM, 2026-10-20) |
+| T-009 | Statistics plan in `monitor_spec.md` §8 approved: exact McNemar M4 vs M3-ens as the confirmatory test; ΔAUROC bootstrap and oriented Wilcoxon as descriptive, Holm-corrected; Clopper–Pearson / Wilson CIs. | **Decided** (MM, 2026-10-20) |
+| T-011 | **Monitor model.**<br>• A mid-tier model (one pinned snapshot) runs the gate and the 40-trace pilot.<br>• **GPT-5.4** runs the sprint/extension runs.<br>• M1–M4 at T = 0; M3-ens is 5 calls at T = 0.7, recorded as a sampling + ensemble ablation.<br>• **M3-T07** (a single M3 call at T = 0.7) is an optional bridge condition, outside the primary comparison.<br>• Pilot results are not pooled with GPT-5.4 results (§10). | **Decided** (MM, 2026-10-20) |
+| T-012 | Gate failure (C-03 missed): revise the prompt at most once and re-run on fresh seeds; if it still fails, switch to a stronger model. Every attempt is logged, including the prompt hash, seeds and results, so the gate can't become tuning on the test set. | **Decided** (MM, 2026-10-20) |
+| T-013 | Budget: **$50 hard cap for the whole sprint**, with the phase split in §10. | **Decided** (MM, 2026-10-20) |
+| T-014 | Extensions after the pilot, in order: (a) real LLM sender/receiver agents, then possibly (b) private-plan regret. Candidates: LLM-generated messages in place of scripted ones, and MM's **replay auditor**, which re-runs trials under controlled alternative message conditions to estimate how sensitive behaviour is to message availability. | **Decided** (MM, 2026-10-20) |
+| T-015 | Report headline is H2 (M4 vs M3-ens); H1 (does adding messages help) is context. | **Decided** (MM, 2026-10-20) |
+| T-016 | **Cross-family robustness check.**<br>• Design: a second model family at a comparable capability tier runs only M3 and M4, at T = 0, on all 40 pilot traces (+80 calls). It runs only after the primary pilot has passed the gate.<br>• Reporting: descriptive only, with no second hypothesis test. Report whether the sign of M4 − M3 agrees across families, plus per-class agreement. No cross-family accuracy claims.<br>• Guard 1: freeze the final prompt (after any gate revision) and give model 2 identical text.<br>• Guard 2: report the parse-failure rate and the complete-case n per family.<br>• Guard 3: pin the snapshot and log `response_id`. | **Decided** (MM, 2026-10-20) |
+| T-017 | **Extension design.**<br>• GPT-5.4 runs only M3, M4 and M3-ens (7 calls per trace).<br>• Target is about 85 traces, depending on actual costs, under a $30 hard cap.<br>• M1 and M2 are pilot-only and descriptive.<br>• The positive-control gate is re-run on GPT-5.4 before the extension: 8 gate traces / 72 calls, about $3. It uses the prompt frozen at the end of the pilot, and the pass rule is unchanged.<br>• Failure policy: one prompt revision on fresh seeds. If the gate still fails, escalate to a stronger model and document the deviation. | **Decided** (MM, 2026-10-20) |
+| T-018 | **Amends T-012 / T-017 ("fresh seeds"), proposed.** With scripted templates, a new seed on the same template gives byte-identical C-03 evidence, so a re-test must use **new C-03 setups**.<br>• **Default:** build `gate_v3` now, before any gate run. It holds 4 C-03 traces (B/B) from **two new B-target paraphrases, one direct and one indirect, approved by the collaborator**, each with and without the sender-role swap. Seeds are 20–23.<br>• These paraphrases appear in neither gate_v2 nor the pilot, so a prompt revision is never tested on evidence the pilot also scores. B-COM is excluded because the pilot uses it.<br>• `gate_v3` is frozen and hashed here before gate_v2 is run. It is used only if the gate fails, for both the mid-tier and the GPT-5.4 gate.<br>• Every gate run, gate_v2 and gate_v3 alike, uses **prompt v1.1** (T-019). | **Proposed** (awaiting MM) |
+| T-019 | **Monitor prompt v1.1** (P0 fixes MM requested after the prompt review):<br>• interpretation rules;<br>• an ordinal score with a stated meaning for τ;<br>• precise M4 checklist semantics;<br>• estimand wording.<br>Preflight seeds 900–905 are never analysed. A single run never mixes `prompt_version` values. Details in `docs/monitor_spec_v1_1_delta.md`. The delta file calls this row T-012; it was renumbered here because T-012 already exists. | **Decided** (MM, 2026-10-20) |
 
-**Frozen corpus SHA-256 (T-006):** *pending.* It will be recorded once Cline applies the v2 delta and freezes the 40-trace corpus; the 30-trace v1 files are not frozen.
+**Pre-specified analysis plan:** [`docs/analysis_plan.md`](analysis_plan.md) is the authority for all analysis. It satisfies MM's statistical conditions:
+- the estimand is defined on the frozen class mix;
+- the threshold is fixed at ≥ 50;
+- the M3-ens decision is the median of at least 3 valid samples;
+- pairing is complete-case, one unit per trace;
+- the Holm families (F1–F5) are fixed in advance;
+- FPR is computed over designated negatives only.
+
+**Frozen corpus SHA-256 (T-006 / T-010, generator v1.1).** The corpus was frozen on 2026-10-20: two runs with a fixed `--created-utc` gave byte-identical output. Class counts are C-01 11, C-02 9, C-03 6, C-04 8, C-05 6 (20/20).
+
+| File | SHA-256 |
+|---|---|
+| `data/frozen/pilot_v2_traces.jsonl` | `cf7615e107b1be03e9ddd23e1b280a611b30fc0489945412d321e736dee201ac` |
+| `data/frozen/pilot_v2_labels.jsonl` | `22e6457632051f5d749d2409fe53d72d1b96da5fee248e9b495c983b22e1008c` |
+| `data/frozen/gate_v2_traces.jsonl` | `0d2db6bb629733d45f960731f7750ace7a34f2c2db928a2a865f7262b6aa7059` |
+| `data/frozen/gate_v2_labels.jsonl` | `e3879004ccf4b995e823f3823951460b85a3f4cf96d1d50b29a2219082185354` |
+| `data/frozen/manifest_v2.json` | `4724c35259a93709b31961b9992b605fbb9a3fad8abe8aa4452d54afa26d9721` (fixed-timestamp run only; see the note below) |
+
+**Authoritative hashes:** the four data-file hashes above are authoritative. The manifest hash changes with `created_utc`, so the committed `manifest_v2.json` from a default run has a different hash, and that is expected. Integrity is checked against the data files only.
 
 ## 9. Message template set (spec; adequacy check of `Linguist_context.txt` §7)
 
@@ -172,3 +200,67 @@ Rules that go with the set:
 - Monitor model and snapshot.
 - The keyword/rule-based baseline: whether it reads message text only (allowed) or `claims` (not allowed).
 - Whether `M4-annot` runs at all, once the codebook arrives on Oct 21.
+
+## 10. Budget allocation and power (T-013, decided)
+
+**Guidelines anchor** (`Guidelines.md` l.50, l.57): one cheap monitor model, short outputs, a 16 GB laptop; 160–250 monitor calls and **$5–30** for a pilot, or $30–75 with stronger agent models. Participant time and coding-assistant subscriptions are excluded.
+
+**Price assumption, to replace with logged usage:**
+- Mid-tier monitor call ≈ $0.01 (≈1.5k input + 300 output tokens).
+- Agent call ≈ $0.005.
+- Stronger-model call ≈ $0.04.
+- After the first 20 real calls, recompute this table from the logged tokens.
+- **Under T-011:** the pilot rows stay at mid-tier prices. Extension monitor calls are priced at GPT-5.4's ≈ $0.04 per call.
+  - A full 9-call set costs ≈ $0.43 per trace, including retries and agent calls.
+  - After the gate re-run (below), the $30 extension cap buys **about 63 traces**.
+  - If MM releases the reserve, that rises to about 80.
+
+| Phase | Calls | Est. | Phase cap |
+|---|---|---|---|
+| Dev / smoke tests | ~150 monitor | $1.5 | |
+| Gate: 4 seeds × 9 calls, up to 2 mid-tier attempts + 1 stronger-model attempt (T-012) | 72 mid + 36 strong | $2.2 | |
+| Pilot: 40 × 9 + 15% retries | ~415 monitor | $4.2 | **$10** (dev + gate + pilot) |
+| Cross-family check (T-016): 40 × (M3 + M4) + 15% | ~92 monitor | $0.9 | from the reserve |
+| Extension (a): ~160 real-agent traces, over-generated 1.5× to fill class quotas | ~720 agent + ~1,660 monitor | $20.2 | **$30** |
+| Reserve: stronger-model switch, extension (b), replay auditor | | | **$10**, released only by MM |
+| **Total** | | **≈ $29 expected** | **$50** |
+
+**Power for M4 vs M3-ens (exact McNemar, two-sided α = .05)**
+
+Assumptions:
+- p_d is the share of traces where M4 and M3-ens disagree.
+- π is the share of those disagreements that M4 wins.
+
+| N | p_d .15, π .75 | p_d .15, π .90 | p_d .25, π .75 | p_d .25, π .90 |
+|---|---|---|---|---|
+| 40 | 0.10 | 0.31 | 0.24 | 0.68 |
+| 80 | 0.31 | 0.78 | 0.55 | 0.97 |
+| 120 | 0.49 | 0.94 | 0.75 | 1.00 |
+| **160** | 0.63 | 0.99 | **0.88** | 1.00 |
+| 200 | 0.75 | 1.00 | 0.94 | 1.00 |
+
+Exact power, computed by enumerating the number of discordant pairs D ~ Bin(N, p_d), then b | D ~ Bin(D, π).
+
+**Implications**
+- **Pilot (N = 40) is a feasibility and plumbing run.** It detects only a very large effect (at most about 68% power). Its p-value is reported but not headlined.
+- **Repeats of the scripted corpus don't add power.** At T = 0 the same trace gives (near-)identical outputs, and the 40 traces come from about 30 distinct setups. Only new, independent traces count.
+- **Confirmatory N ≈ 160 independent traces, from extension (a).** That gives ≥ 0.88 power for a moderate effect and ≥ 0.99 for a strong one. It is underpowered (0.63) only for a small, lopsided-free effect.
+  - Before scaling, use the pilot's observed p_d and π to re-size N.
+  - If the gate forces the stronger model, monitor cost rises about 4×. Extension N then drops to roughly 100–120, and the report states the reduced power.
+
+**Enforcement (for Cline)**
+- The client tracks cumulative spend from the logged token usage × the configured prices.
+- It refuses any call that would exceed the current phase cap.
+- Raising a cap needs MM to edit the config.
+
+**Implications of T-011**
+
+1. **Extension power at GPT-5.4 prices.**
+   - N ≈ 60 gives power of 0.89 if the effect is strong (p_d .25, π .90) and 0.60 if p_d is .15 at the same π.
+   - For a moderate effect (p_d .25, π .75), power is only 0.41.
+   - N ≈ 80 raises these to 0.97, 0.78 and 0.55.
+   - **Adopted (T-017):** run only the primary-contrast views (M3, M4, M3-ens; 7 calls) on GPT-5.4. That is ≈ $0.33 per trace, or about 85 traces within the cap. M1 and M2 then stay pilot-only and descriptive.
+2. **The pilot results don't carry over to GPT-5.4.** The pilot validates the pipeline, prompts and gate on the mid-tier model only.
+   - **Re-run the gate on GPT-5.4 before the extension.** That is 8 gate traces (4 C-03 seeds + 4 C-01 sanity seeds) × 9 calls = 72 calls, about $3, taken from the extension cap.
+   - Same pass rule as §3; the T-012 failure policy applies.
+   - Use the prompt frozen at the end of the pilot, with no further revision.

@@ -1,0 +1,16 @@
+{
+  "provider": "openrouter",
+  "model": "openai/gpt-5.4-mini",
+  "phase_caps_usd": {
+    "smoke": 0.10,
+    "gate": 1.00,
+    "pilot": 8.90,
+    "extension": 30.00
+  },
+  "prices": {
+    "openrouter/openai/gpt-5.4-mini": {
+      "input_per_million": 0.75,
+      "output_per_million": 4.50
+    }
+  }
+}

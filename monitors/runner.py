@@ -15,7 +15,7 @@ from apart.schema import Trace
 from .client import ApiError
 from .observable import observable
 from .parser import RETRY_MESSAGE, aggregate_ensemble, parse_response
-from .prompts import SYSTEM_PROMPT, display_id, render_view
+from .prompts import PROMPT_VERSION, SYSTEM_PROMPT, display_id, render_view
 
 # view -> (temperature, calls, max_tokens); monitor_spec.md §1
 VIEW_PLAN = {
@@ -96,6 +96,7 @@ def _record(trace, display, view, k, temperature, provider_seed, digest, parsed,
         "snapshot": snapshot,
         "temperature": temperature,
         "provider_seed": provider_seed,
+        "prompt_version": PROMPT_VERSION,
         "prompt_sha256": digest,
         "score": parsed.score if usable else None,
         "rationale": parsed.rationale if usable else None,
