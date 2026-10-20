@@ -13,6 +13,7 @@ from __future__ import annotations
 import json
 import math
 import os
+import ssl
 import threading
 import time
 import urllib.error
@@ -29,6 +30,68 @@ except ImportError:  # pragma: no cover - non-POSIX fallback
     fcntl = None
 
 PHASES = ("smoke", "gate", "pilot", "extension")
+
+DEFAULT_ENV_PATH = Path(__file__).resolve().parents[1] / ".env"
+
+
+def load_apart_env(path: Optional[Path] = None) -> int:
+    """Load only APART_* keys from a .env file when not already set.
+
+    Never overrides an existing environment variable, never prints values, and
+    ignores every non-APART key. Returns the number of variables loaded.
+    """
+    env_path = Path(path) if path is not None else DEFAULT_ENV_PATH
+    try:
+        lines = env_path.read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return 0
+    loaded = 0
+    for raw in lines:
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        if line.startswith("export "):
+            line = line[len("export ") :].lstrip()
+        if "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        key = key.strip()
+        if not key.startswith("APART_") or len(key) <= len("APART_"):
+            continue
+        if not all(char.isalnum() or char == "_" for char in key):
+            continue
+        if key in os.environ:
+            continue
+        value = value.strip()
+        if len(value) >= 2 and value[0] == value[-1] and value[0] in {"'", '"'}:
+            value = value[1:-1]
+        os.environ[key] = value
+        loaded += 1
+    return loaded
+
+
+def _ssl_context() -> ssl.SSLContext:
+    """Build a verifying TLS context with a usable CA bundle.
+
+    This Python installation has no default cafile, so fall back to
+    ``APART_CA_BUNDLE``, then ``certifi`` if installed, then the macOS system
+    bundle. Verification is never disabled.
+    """
+    bundle = os.environ.get("APART_CA_BUNDLE")
+    if not bundle:
+        try:
+            import certifi
+
+            bundle = certifi.where()
+        except ImportError:
+            bundle = None
+    if not bundle:
+        system_bundle = Path("/etc/ssl/cert.pem")
+        bundle = str(system_bundle) if system_bundle.is_file() else None
+    context = ssl.create_default_context(cafile=bundle)
+    context.check_hostname = True
+    context.verify_mode = ssl.CERT_REQUIRED
+    return context
 
 
 class ApiError(RuntimeError):
@@ -442,7 +505,10 @@ class ModelClient:
         backoff_base_s: float = 1.0,
         sleep: Callable[[float], None] = time.sleep,
         spend_guard: Optional[SpendGuard] = None,
+        load_env: bool = True,
     ) -> None:
+        if load_env:
+            load_apart_env()
         key = api_key if api_key is not None else os.environ.get("APART_API_KEY")
         if not key:
             raise RuntimeError(
@@ -503,6 +569,15 @@ class ModelClient:
             reservation = self.spend_guard.reserve(self.model, input_bound, max_tokens)
             try:
                 data = self._post_json(payload)
+            except urllib.error.HTTPError as exc:
+                detail = ""
+                try:
+                    detail = exc.read().decode("utf-8", "replace")[:300]
+                except Exception:
+                    pass
+                last_error = ApiError(f"HTTP {exc.code}: {detail}")
+                if attempt + 1 < self.max_attempts:
+                    self._sleep(self.backoff_base_s * (2 ** attempt))
             except (urllib.error.URLError, TimeoutError, ValueError) as exc:
                 last_error = exc
                 if attempt + 1 < self.max_attempts:
@@ -544,7 +619,9 @@ class ModelClient:
             },
             method="POST",
         )
-        with urllib.request.urlopen(request, timeout=self.timeout_s) as response:
+        with urllib.request.urlopen(
+            request, timeout=self.timeout_s, context=_ssl_context()
+        ) as response:
             return json.loads(response.read().decode("utf-8"))
 
 

@@ -28,6 +28,7 @@ from monitors.client import (  # noqa: E402
     SpendConfig,
     SpendConfigError,
     SpendGuard,
+    load_apart_env,
 )
 from monitors.runner import (  # noqa: E402
     VIEW_ORDER,
@@ -45,6 +46,7 @@ def load_traces(path: Path):
 
 
 def main(argv=None) -> int:
+    load_apart_env(ROOT / ".env")
     parser = argparse.ArgumentParser(description="Run M1-M4 monitor views.")
     parser.add_argument(
         "--traces", type=Path, default=ROOT / "data" / "frozen" / "pilot_v2_traces.jsonl"

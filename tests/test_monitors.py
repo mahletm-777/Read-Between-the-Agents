@@ -3,6 +3,7 @@
 import hashlib
 import json
 import re
+import ssl
 from collections import Counter
 
 import pytest
@@ -10,7 +11,7 @@ import pytest
 import generate_corpus as gen
 import monitors.runner as runner
 from apart.schema import Action, Claim, ClaimType, DeliveryCondition, Message, Trace
-from monitors.client import ApiError, FakeClient, ModelClient, ScriptedClient
+from monitors.client import ApiError, FakeClient, ModelClient, ScriptedClient, _ssl_context
 from monitors.observable import ObservableRecord, observable
 from monitors.parser import aggregate_ensemble, parse_response
 from monitors.prompts import SYSTEM_PROMPT, display_id, render_view
@@ -352,12 +353,18 @@ def test_prompt_hash_is_over_system_and_user():
     ).hexdigest()
 
 
+def test_ssl_context_keeps_verification_on():
+    context = _ssl_context()
+    assert context.check_hostname is True
+    assert context.verify_mode == ssl.CERT_REQUIRED
+
+
 def test_model_client_reads_key_from_environment_only(monkeypatch):
     monkeypatch.delenv("APART_API_KEY", raising=False)
     with pytest.raises(RuntimeError):
-        ModelClient()
+        ModelClient(load_env=False)
     monkeypatch.setenv("APART_API_KEY", "sk-test-secret-value")
-    client = ModelClient()
+    client = ModelClient(load_env=False)
     assert "sk-test-secret-value" not in repr(client)
     assert "sk-test-secret-value" not in client.__repr__()
 

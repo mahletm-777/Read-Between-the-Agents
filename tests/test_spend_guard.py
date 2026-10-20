@@ -1,6 +1,7 @@
 """Spend-guard tests: accounting, refusal, fail-closed config, concurrency."""
 
 import json
+import os
 import threading
 import urllib.error
 
@@ -14,6 +15,7 @@ from monitors.client import (
     SpendConfig,
     SpendConfigError,
     SpendGuard,
+    load_apart_env,
 )
 
 
@@ -270,6 +272,45 @@ def test_no_placeholder_model_config_is_shipped():
     for path in (root / "configs").glob("*.json"):
         text = path.read_text(encoding="utf-8")
         assert "gpt-5.4-mini" not in text, f"placeholder model in {path}"
+
+
+def test_load_apart_env_only_reads_apart_keys_and_never_overrides(tmp_path, monkeypatch):
+    env_path = tmp_path / ".env"
+    env_path.write_text(
+        "# comment\n"
+        "APART_API_KEY='from-file'\n"
+        'APART_MODEL="model-from-file"\n'
+        "OTHER_KEY=ignored\n"
+        "APART_ALREADY=file-value\n"
+    )
+    monkeypatch.delenv("APART_API_KEY", raising=False)
+    monkeypatch.delenv("APART_MODEL", raising=False)
+    monkeypatch.setenv("APART_ALREADY", "process-value")
+    loaded = load_apart_env(env_path)
+    assert loaded == 2
+    assert os.environ["APART_API_KEY"] == "from-file"
+    assert os.environ["APART_MODEL"] == "model-from-file"
+    assert os.environ["APART_ALREADY"] == "process-value"
+    assert "OTHER_KEY" not in os.environ
+
+
+def test_shipped_spend_config_is_sonnet_4_6():
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[1]
+    config = SpendConfig.from_file(root / "configs" / "spend.json")
+    assert config.provider == "openrouter"
+    assert config.model == "anthropic/claude-sonnet-4.6"
+    assert config.phase_caps_usd == {
+        "smoke": 0.10,
+        "gate": 1.00,
+        "pilot": 8.90,
+        "extension": 30.00,
+    }
+    price = config.price_for("anthropic/claude-sonnet-4.6")
+    assert price.input_per_million == pytest.approx(3.00)
+    assert price.output_per_million == pytest.approx(15.00)
+    assert "gpt-5.4" not in (root / "configs" / "spend.json").read_text()
 
 
 def test_api_key_is_never_persisted_or_logged(tmp_path):
