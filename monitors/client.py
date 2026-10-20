@@ -80,15 +80,16 @@ def _validated_cap(value: Any, phase: str) -> float:
 class SpendConfig:
     """Provider, model, phase caps and per-million-token prices.
 
-    JSON shape (see ``SpendConfig.from_dict``)::
+    Provider, model slug and prices are **chosen by MM**; the repository must
+    not ship a placeholder model. JSON shape (see ``SpendConfig.from_dict``)::
 
-        {"provider": "openrouter",
-         "model": "openai/gpt-5.4-mini",
+        {"provider": "<MM-approved provider>",
+         "model": "<MM-approved model slug>",
          "phase_caps_usd": {"smoke": 0.10, "gate": 1.00,
                             "pilot": 8.90, "extension": 30.00},
-         "prices": {"openrouter/openai/gpt-5.4-mini":
-                    {"input_per_million": 0.75,
-                     "output_per_million": 4.50}}}
+         "prices": {"<provider>/<model slug>":
+                    {"input_per_million": <number>,
+                     "output_per_million": <number>}}}
 
     The ``$10`` reserve is deliberately outside this config; it is released
     only by MM.

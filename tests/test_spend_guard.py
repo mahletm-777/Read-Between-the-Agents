@@ -263,23 +263,13 @@ def test_config_file_round_trip_and_missing_file(tmp_path):
         SpendConfig.from_file(tmp_path / "missing.json")
 
 
-def test_shipped_spend_config_matches_approved_budget():
+def test_no_placeholder_model_config_is_shipped():
     from pathlib import Path
 
     root = Path(__file__).resolve().parents[1]
-    config = SpendConfig.from_file(root / "configs" / "spend.json")
-    assert config.provider == "openrouter"
-    assert config.model == "openai/gpt-5.4-mini"
-    assert config.phase_caps_usd == {
-        "smoke": 0.10,
-        "gate": 1.00,
-        "pilot": 8.90,
-        "extension": 30.00,
-    }
-    assert sum(config.phase_caps_usd[p] for p in ("smoke", "gate", "pilot")) == pytest.approx(10.00)
-    price = config.price_for("openai/gpt-5.4-mini")
-    assert price.input_per_million == pytest.approx(0.75)
-    assert price.output_per_million == pytest.approx(4.50)
+    for path in (root / "configs").glob("*.json"):
+        text = path.read_text(encoding="utf-8")
+        assert "gpt-5.4-mini" not in text, f"placeholder model in {path}"
 
 
 def test_api_key_is_never_persisted_or_logged(tmp_path):
