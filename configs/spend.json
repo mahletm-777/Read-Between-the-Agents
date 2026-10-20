@@ -1,0 +1,16 @@
+{
+  "provider": "openrouter",
+  "model": "anthropic/claude-sonnet-4.6",
+  "phase_caps_usd": {
+    "smoke": 0.10,
+    "gate": 1.00,
+    "pilot": 8.90,
+    "extension": 30.00
+  },
+  "prices": {
+    "openrouter/anthropic/claude-sonnet-4.6": {
+      "input_per_million": 3.00,
+      "output_per_million": 15.00
+    }
+  }
+}
