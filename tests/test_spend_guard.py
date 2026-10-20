@@ -189,6 +189,19 @@ def test_settlement_uses_served_model_price(tmp_path):
     assert guard.totals()["phase_spent_usd"] == pytest.approx(0.3)
 
 
+def test_settle_falls_back_to_configured_provider_price(tmp_path):
+    guard = make_guard(tmp_path)
+    reservation = guard.reserve("m1", 100, 50)
+    actual = guard.settle(
+        reservation,
+        {"prompt_tokens": 100, "completion_tokens": 50},
+        served_model="m1",
+        provider="Claude Platform on AWS",
+    )
+    assert actual == pytest.approx(0.2)
+    assert guard.totals()["phase_spent_usd"] == pytest.approx(0.2)
+
+
 def test_concurrent_reservations_cannot_overshoot(tmp_path):
     prices = {"prov/m1": ModelPrice(1000.0, 1000.0)}  # 0.001 per token
     guard = make_guard(tmp_path, cap=0.01, prices=prices)  # 0.002 per reservation

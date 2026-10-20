@@ -427,7 +427,14 @@ class SpendGuard:
             else reservation.model
         )
         provider_name = provider if isinstance(provider, str) and provider.strip() else None
-        price = self.config.price_for(served, provider=provider_name)
+        try:
+            price = self.config.price_for(served, provider=provider_name)
+        except SpendConfigError:
+            if provider_name is None:
+                raise
+            # OpenRouter reports the upstream provider; billing keys on the
+            # configured gateway unless an upstream-specific price is listed.
+            price = self.config.price_for(served)
         actual = (
             prompt_tokens * price.input_per_million / 1_000_000
             + completion_tokens * price.output_per_million / 1_000_000
