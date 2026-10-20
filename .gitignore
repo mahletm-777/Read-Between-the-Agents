@@ -1,0 +1,33 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+results/*.jsonl
+!results/scores_*.jsonl
+results/raw/
+data/raw/*
+!data/raw/.gitkeep
+!results/.gitkeep
+.venv/
+venv/
+
+# Local environment and OS metadata
+.DS_Store
+Thumbs.db
+
+# Local assistant configuration (machine-specific paths)
+.claude/
+
+# Unrelated nested repositories (excluded from this project)
+Colosseum/
+LLM-Trust-Breaking/
+
+# Archive snapshots
+*.zip
+
+# Local environment and credential files
+.env
+.env.*
+!.env.example
+
+# Local logs
+logs/

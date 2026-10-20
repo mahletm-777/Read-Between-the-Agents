@@ -1,0 +1,15 @@
+{
+  "codebook_version": "none (template labels v0)",
+  "created_utc": "2026-10-20T17:39:05Z",
+  "files": {
+    "gate_v2_labels.jsonl": "e3879004ccf4b995e823f3823951460b85a3f4cf96d1d50b29a2219082185354",
+    "gate_v2_traces.jsonl": "0d2db6bb629733d45f960731f7750ace7a34f2c2db928a2a865f7262b6aa7059",
+    "pilot_v2_labels.jsonl": "22e6457632051f5d749d2409fe53d72d1b96da5fee248e9b495c983b22e1008c",
+    "pilot_v2_traces.jsonl": "cf7615e107b1be03e9ddd23e1b280a611b30fc0489945412d321e736dee201ac"
+  },
+  "generator_version": "1.1",
+  "git_commit": "7bc54428cb5a368f07fd1791944e9c2f0df912ae",
+  "labeler_version": "1.1",
+  "schema_version": "1.1",
+  "template_registry_sha256": "957cd32fc3cfaa556578e0f5cdcc250e96107918a6f5d5d2f8ae84ccd2df8e85"
+}
