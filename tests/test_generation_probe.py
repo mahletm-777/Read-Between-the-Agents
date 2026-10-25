@@ -9,6 +9,7 @@ from __future__ import annotations
 import hashlib
 import json
 import socket
+import subprocess
 import urllib.request
 from pathlib import Path
 
@@ -563,9 +564,28 @@ def test_provenance_log_accepts_extended_records_and_refuses_overwrite(tmp_path)
         ProvenanceLog(path, run_id="r")
 
 
+def _current_head_ref() -> str:
+    """The ref this checkout is actually on, as ``refs/heads/<branch>``.
+
+    ``source_state`` reads ``.git/HEAD`` directly, so the value it reports depends on the
+    branch the clone happens to be on. Resolving it from git keeps the test branch-agnostic
+    instead of hard-coding ``refs/heads/main``.
+    """
+    result = subprocess.run(
+        ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+        capture_output=True, text=True, cwd=Path(__file__).resolve().parents[1],
+    )
+    if result.returncode != 0:
+        pytest.skip("not a git checkout; no HEAD ref to compare against")
+    name = result.stdout.strip()
+    if not name or name == "HEAD":
+        pytest.skip("detached HEAD; there is no branch ref to compare against")
+    return f"refs/heads/{name}"
+
+
 def test_source_state_reports_head_without_claiming_cleanliness():
     state = source_state()
-    assert state["source_ref"] == "refs/heads/main"
+    assert state["source_ref"] == _current_head_ref()
     assert state["source_commit"] is None or len(state["source_commit"]) == 40
     assert state["source_dirty"] is None      # not determined, never claimed clean
     assert source_state(observed={"source_dirty": True})["source_dirty"] is True
