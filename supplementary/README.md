@@ -49,12 +49,52 @@ cells = 80 trials per arm, analysed with the within-model contrasts **T**, **J**
 - `.env` and any API key or credential — **never** copied into this package.
 - Spend ledgers, spend guards and budget backups (`results/spend/`, `results/spend_e1/`,
   `runs/*/spend/`, `*.spend_guard.json`) — budget and billing state.
+- Spend policy configs (`configs/spend.json`, `configs/spend_gpt54mini.json`) — they hold caps and
+  price tables.
 - Per-call provider request/response payloads (`runs/*/raw*/`) — raw provider logs.
 - Account, organisation and billing identifiers — none are present in the repository at all.
 - `apart_code_review.zip` — an internal archive snapshot.
 - The **aborted** `gptmon` monitor run. Only the completed `gptmon2` run is used.
 
 `.gitignore` covers all of the above (see the top-level README's "What needs an API key" section).
+
+## Two known artefact issues (flagged, not fixed)
+
+**1. The summary figure has no generating script.** `figures/summary_figure.png` is the report's
+summary figure, but **no script in the repository writes that file name** — searching
+`figures/**/*.py` and the whole tree for `Summary_figure` returns only prose references. It was
+produced out-of-band and cannot be regenerated from this package.
+
+**2. Annotator 2's label manifest pins the original sheet's hash while naming the revised sheet.**
+Both `data/monitor_scores/e_label_manifest_receiver-*.json` files record
+
+```json
+"Annotator 2": { "sha256": "3d1f2d63fe49979f68952c12bd34addffd08198c0ffd8484e5579eea7aaa5b2e",
+                 "sheet":  "annotator_2_revised.csv" }
+```
+
+but `data/annotations/annotator_2_revised.csv` actually hashes to
+`0648165e6a6e14eeeaecbb092173143b313b45d7a8fcc00af5b7979ec81237c0`. The pinned
+`3d1f2d63…` is the hash of `annotator_2_first_pass.csv`. Annotator 1's entry is self-consistent.
+**E is unaffected:** both annotators agreed on `coordination_attempt` and `target` for all ten
+messages from the outset, so the E rule yields identical labels from either sheet, and no number in
+this package changes. The discrepancy is a provenance defect that needs the owner to say which
+artefact the manifest was meant to pin.
+
+## Anonymisation and path normalisation
+
+Personal initials do not appear anywhere in this package — not in file names and not in file
+contents. Two documented transforms were applied to six data files, and every affected entry in
+`manifests/file_manifest.json` carries `"copied_verbatim": false` plus a `transformations` list:
+
+- **`MM` → `Annotator 1`, `LL` → `Annotator 2`**, and the sheet file names
+  `annotation_sheet_MM[_original].csv` / `annotation_sheet_LL[_original].csv` → the neutral names
+  used in `data/annotations/`. Applied to the four `e_labels` / `e_label_manifest` files.
+- **Absolute local path prefix → `<repo>/`** in the two exploratory-arm `summary.json` files.
+  Nothing under `supplementary/` contains a `/Users/...` path.
+
+The originals are unmodified in the repository at the four `annotation_sheet_*` paths, and the
+`source_path` / `source_sha256` fields of the manifest record exactly where each copy came from.
 
 ## Reproducing the tables and figures offline
 
