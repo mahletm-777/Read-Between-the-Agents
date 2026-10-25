@@ -75,7 +75,23 @@ Run-level counts: `n_trials`, `n_valid_traces`, `counts_by_status`, `exclusions`
 
 ### `e_label_manifest_receiver-*.json`
 Label counts, the pinned `e_rule` (P0-1), guide version, and the recorded sha256 of each annotator's
-sheet. **Note the Annotator 2 asymmetry** flagged in the top-level README.
+sheet, the pinned `e_rule` (P0-1), guide version, and the recorded sha256 of each annotator's
+sheet.
+
+> **⚠ Flagged, not fixed — Annotator 2 (LL) sheet-hash discrepancy.** In both
+> `e_label_manifest_receiver-*.json` files the Annotator 2 entry reads
+> `{"sheet": "annotation_sheet_LL.csv", "sha256": "3d1f2d63fe49979f68952c12bd34addffd08198c0ffd8484e5579eea7aaa5b2e"}`.
+> The file named `annotation_sheet_LL.csv` (released here as `annotator_2_revised.csv`) actually
+> hashes to `0648165e6a6e14eeeaecbb092173143b313b45d7a8fcc00af5b7979ec81237c0`; the recorded
+> `3d1f2d63…` is the hash of `annotation_sheet_LL_original.csv` (released as
+> `annotator_2_first_pass.csv`). Annotator 1's entry is self-consistent — its name and its hash both
+> point at the revised sheet (`cbff1e9a…`). **So the pinned Annotator 2 hash points at the first
+> pass while the pinned filename points at the revised sheet.** The discrepancy is a provenance
+> defect only: the two annotators agreed on `coordination_attempt` and `target` for all 10 messages
+> from the outset, so **E is identical under either sheet** and no released number changes. It is
+> self-reported here because it cannot be resolved without the owner deciding which artefact the
+> manifest was meant to pin. See `audits/md_audit_2026-10-25.md` and
+> `supplementary_phase_b_audit/outputs/annotation_provenance_and_agreement.md`.
 
 ## `data/exploratory_receiver_follow-up/arm-{sonnet46,gpt54mini}/`
 
