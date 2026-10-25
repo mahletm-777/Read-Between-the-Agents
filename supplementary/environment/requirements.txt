@@ -5,6 +5,13 @@
 #
 # matplotlib is optional and is needed only for analysis/summary_figure.py.
 # Versions below are those the package was validated against (Python 3.14.8).
+#
+# This file is what `pip install -r` should use to get a clean environment for the
+# whole package: it also covers running the repository test suite, which is the
+# other offline check described in README.md.
+
+# --- required to run the repository test suite offline ------------------------
+pytest>=7.0
 
 # --- optional: figure regeneration only -------------------------------------
 matplotlib>=3.8
