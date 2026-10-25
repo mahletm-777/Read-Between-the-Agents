@@ -1,5 +1,10 @@
 # Data dictionary
 
+The field-level reference for the released data. The authoritative per-file inventory — file
+sha256, source path, record counts and the table/figure each file produces — is
+[`DATA.md`](../DATA.md); this file describes the fields inside the files. Both stay in agreement:
+a field described here is a field you will find in `DATA.md`'s files.
+
 All JSONL files are one JSON object per line. All timestamps are UTC ISO-8601.
 Every path below is relative to `supplementary/`.
 
@@ -125,6 +130,14 @@ Annotator 2 writes `YES` and uppercase. Comparisons must be case-insensitive.
 `annotator_1_calibration.csv` uses lowercase `yes` / `proposal`, matching Annotator 1's sheets;
 `annotator_2_calibration.csv` uses `YES` / `PROPOSAL`, matching Annotator 2's. Confidence: high but
 **not** documentary.
+
+## Adjudication
+
+The four sheets ship exactly what they contain — a `message_id`, `message_text` and five annotation
+columns. There is **no separate adjudicated column and no adjudication sheet**: the revised sheets are
+the post-adjudication record, and `e_label_manifest_receiver-*.json` records `adjudication = null`
+(rule P0-1 made E independent of the disputed speech-act cells, so no adjudication column was
+needed).
 
 ## Conventions that apply throughout
 

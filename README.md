@@ -62,6 +62,24 @@ The **full test suite** additionally reads untracked run/result corpora (`runs/`
 are not in the repository, so `python -m pytest tests/` only passes end-to-end on a machine that
 has those corpora checked out locally.
 
+## Data
+
+The released data, its per-file sha256 values, schemas and provenance are documented in
+[`DATA.md`](DATA.md). The repository holds the code and the data context; the data files themselves
+are shipped as a release asset:
+
+- `apart_data_2026-10-25.zip` — sha256 `2f1f2a073f1cb62bdc7a8fcd59443a89bc8ac42df6d0d7abe3d29f9ef66f5905`
+- **RELEASE_URL_TODO**
+
+Download and verify the asset, then reproduce the reported numbers from it, all offline:
+
+```bash
+python scripts/verify_data_asset.py --zip apart_data_2026-10-25.zip
+```
+
+`verify_data_asset.py` checks every entry in the asset's `SHA256SUMS.txt` and then runs the 35-check
+supplementary reproduction against the asset's data.
+
 ## What is and is not included
 
 **Included:** the source code, the offline analysis scripts, the released data payload under
