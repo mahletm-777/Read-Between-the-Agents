@@ -1,109 +1,89 @@
-# APART — coordination monitoring in two-agent LLM interaction
+# Reading Between the Agents: Message and Action Evidence in Coordination Monitoring
 
-**This repository is a research artefact, not a validated safety monitor.** It contains an
-exploratory study of whether a language-model auditor can detect *coordination toward an
-operator-dispreferred option* from the evidence it is shown. Everything here was run on a small,
-fixed, synthetic corpus under one game and one prompt set; nothing in it supports deploying, relying
-on, or certifying a monitoring capability, and no result generalises beyond the corpus it was
-computed on.
+**Mahlet Molla, Lydia Lee** (Independent Researchers)
 
-![Summary figure](supplementary/figures/summary_figure.png)
+Research conducted at the AI Collusion Research Sprint, October 2026 (Apart Research).
 
-*Observed receiver behaviour by condition and receiver. Descriptive only — no intervals, no tests.*
+## Abstract
 
-## The three components
+Monitoring multi-agent coordination requires weighing what agents say against what they do, not conflating evidence with intent. In a pilot study of a two-option game where the operator prefers *A*, we first varied scripted sender messages and measured two language models' responses as receivers. Sonnet 4.6 chose the permitted but dispreferred option *B* in 8/20 trials under a *B*-directed proposal, GPT-5.4-mini in 7/20 under an *A*-directed one; however, direction was bundled with wording. We then compared four monitors: message-only, action-only, combined, and combined with a checklist. Message-only and combined monitors reached AUROC 1.00 on the resolved subset, so combining evidence showed no gain. This reflects a ceiling, not equivalence, because the endpoint is post hoc and perfectly separable by template. These findings show how endpoint construction, evidence asymmetry, and prompt design can limit what a monitoring evaluation shows, and we offer two diagnostics, saturation and evidence-contract checks, for future benchmarks.
 
-**Sender-receiver interaction.** A scripted sender and a live receiver play a fixed 2×2 game (A pays
-7, B pays 10; the operator prefers A, B is available) across 20 scenarios × 4 conditions — C0 no
-message, C1 neutral notice, C2 A-directed proposal, C3 B-directed proposal — giving 80 trials per
-receiver for two receivers. The recorded outcomes are the receiver's **B-choice**, **BB** and **OB**;
-these are described, not tested.
+## Summary figure
 
-**Monitor evaluation.** Four auditor views of the same records are compared on the resolved
-population (40 traces per receiver: 20 E-positive, 20 E-negative). M1 sees messages only, M2 actions
-and payoffs only, M3 both, and M4 M3's evidence plus a structured checklist. The primary contrast is
-**M3 − M1** on AUROC, with a scenario-cluster paired percentile bootstrap interval.
+![Summary figure](figures/summary_figure.png)
 
-**Exploratory receiver follow-up.** A separate 2×2 message-factorial run (target × explicit payoff
-mention) over 20 scenario labels × 4 cells, analysed with the within-model contrasts **T**, **J** and
-**I**. This is exploratory and is kept strictly separate from the other two components.
+*Receiver B-choice and joint-B behaviour by condition and receiver, for the sender-receiver interaction and the exploratory receiver follow-up.*
 
-Full numbers, data dictionary and reproduction instructions:
-**[`supplementary/README.md`](supplementary/README.md)**.
-
-## Repository map
+## Repository structure
 
 ```
-├── README.md                     this file
-├── AGENTS.md, CLAUDE.md          agent working rules for this repo
-├── CONTRIBUTING.md               contribution workflow
-├── src/apart/                    study logic: plans, contrasts, labels, metrics   -> src/apart/README.md
-├── monitors/                     provider client + spend ledger + monitor prompts -> monitors/README.md
-├── agents/                       agent-side client, prompts and stage runner      -> agents/README.md
-├── scripts/                      CLI entry points (offline and provider-backed)   -> scripts/README.md
-├── tests/                        pytest suite, offline only                       -> tests/README.md
-├── configs/                      spend policy and model bindings                  -> configs/README.md
-├── supplementary/                the release package: data, design, analysis, manifest
-├── docs/                         specifications, decision log, runbook, manuscript draft
-├── experiments/                  the separate generation-probe experiment
-├── reports/, results/, runs/     run artefacts (most are not tracked; see .gitignore)
-└── audits/                       read-only audits of the numbers and the markdown layout
+.
+├── README.md                  this file
+├── LICENSE                    MIT
+├── AGENTS.md / CLAUDE.md      agent working rules for this repository
+├── CONTRIBUTING.md            contribution workflow
+├── requirements.txt           pytest (the only hard dependency)
+├── config.py, generate_corpus.py, pytest.ini
+├── agents/                    agent-side system prompt (v2.1), parser, client, stage runner
+├── configs/                   spend policy config (spend.json; see "What is not included")
+├── data/
+│   └── frozen/                frozen gate/pilot trace corpora used by offline checks
+├── docs/                      specifications, decision log, runbook, manuscript draft
+├── extraction/                message-extraction client, prompts, adjudication, writeback
+├── figures/                   report figures and summary_figure.png
+├── monitors/                  provider client, spend ledger, monitor prompts (views M1–M4)
+├── scripts/                   CLI entry points (offline and provider-backed)
+├── src/apart/                 study logic: plans, contrasts, labels, metrics
+├── supplementary/             the release package: data, design, analysis, manifest
+├── tests/                     pytest suite (offline)
+├── audits/                    read-only audits of the numbers and the markdown layout
+├── experiments/               the separate generation-probe experiment (not committed)
+├── reports/                   design memos and report outputs (not committed)
+├── results/                   run outputs — not released; produced locally
+└── runs/                      raw run artefacts — not released; produced locally
 ```
 
-## Quick start
+## Reproducing the reported numbers
+
+The release package lives in [`supplementary/`](supplementary/README.md). It contains the
+released data, the analysis scripts, the design documents and a manifest that records the
+sha256 of every file and where it came from. Reproducing every reported table is **offline and
+needs no API key**:
 
 ```bash
-# 1. environment (Python 3.14; pytest is the only hard requirement)
+cd supplementary/analysis
+python run_all.py          # 35 checks against the reported values -> outputs/reproduction_report.md
+```
+
+See [`supplementary/README.md`](supplementary/README.md) for the full data dictionary and the
+exact steps.
+
+The **full test suite** additionally reads untracked run/result corpora (`runs/`, `results/`) that
+are not in the repository, so `python -m pytest tests/` only passes end-to-end on a machine that
+has those corpora checked out locally.
+
+## What is and is not included
+
+**Included:** the source code, the offline analysis scripts, the released data payload under
+`supplementary/data/`, the design documents, and the figure scripts.
+
+**Not included, deliberately:** API keys and `.env`; spend ledgers, spend guards and spend policy
+configs; per-call provider request/response payloads (`runs/*/raw*/`); account or billing
+identifiers; `apart_code_review.zip`; and the raw annotation sheets that carry annotator names. The
+two annotators appear only as **Annotator 1** and **Annotator 2**, in `supplementary/data/annotations/`.
+
+This repository is a research artefact, **not a validated safety monitor**.
+
+## Setup
+
+```bash
 python -m venv .venv && . .venv/bin/activate
-pip install -r requirements.txt
+pip install -r requirements.txt            # pytest is the only hard requirement
 
-# 2. tests - offline, no API key, no spend
-python -m pytest tests/ -q
-
-# 3. reproduce every reported table and figure from the released data
-#    - offline, no API key
-cd supplementary/analysis && python run_all.py
+python -m pytest tests/ -q                 # offline; needs run/result corpora for the full pass
+cd supplementary/analysis && python run_all.py   # offline; 35 checks, no key
 ```
 
-`run_all.py` compares each reported number with the value stated in the report and exits non-zero on
-any mismatch. Its current status is recorded in `supplementary/outputs/reproduction_report.md`.
+## License
 
-Other offline checks that never spend anything:
-
-```bash
-python scripts/run_experiment_e1.py --dry-run --out-dir /tmp/e1-dry   # in-process fake receiver
-python scripts/run_monitors.py --dry-run --views M1,M2,M3,M4          # render prompts, send nothing
-```
-
-## What needs an API key
-
-Only the **live** entry points do — the sender-receiver interaction
-(`scripts/run_phase_a_live.py`), the monitors (`scripts/run_monitors.py`), and the exploratory
-follow-up (`scripts/run_experiment_e1.py --confirm-live`). Everything in `supplementary/` and the
-whole test suite run without one.
-
-Configure it in an **untracked** `.env` at the repository root:
-
-```bash
-# .env  -- NEVER commit this file
-APART_API_KEY=<your OpenRouter key>
-APART_BASE_URL=https://openrouter.ai/api/v1
-```
-
-`.env` is already in `.gitignore`, together with `.env.*` (with `!.env.example` the only exception),
-`logs/`, `*.zip`, `results/raw/`, `data/raw/*` and the spend ledgers and guards. **Keys are read from
-the environment only and are never written to a result file, a log, or a `repr`.** Live runs
-additionally require explicit authorisation flags and are gated by a ledger that refuses any request
-it cannot price or reserve.
-
-## Key limitations
-
-The evaluation is **post hoc and pilot-scale**: four auditor views, one game, one prompt set, 40
-scored traces per receiver. The target contrast is **not a pure manipulation** — the A- and
-B-directed messages differ in payoff magnitude, justification and length, and template identity is
-fully aliased with scenario id. The reported M1/M3/M4 AUROC of 1.0 is a **ceiling**: on this corpus
-those views are not distinguishable from one another. The M2 result is an **evidence mismatch** — an
-action-only view returns 0.5 because every one of its scores is 0, a degenerate value rather than a
-fitted one. Intervals describe resampling variability across these 20 scenario labels under one fixed
-game; they are not generalisation claims, no cross-model test is performed, and no p-value is
-reported for the AUROC difference because no test is approved for it.
+MIT — see [LICENSE](LICENSE).
