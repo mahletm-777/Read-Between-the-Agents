@@ -131,7 +131,7 @@ python scripts/run_monitors.py \
   --id-map results/id_map_gate_a1.csv \
   --raw-dir results/raw/gate_a1
 ```
-`results/scores_*.jsonl` is committed (see `.gitignore`); `results/raw/` is not. The script exits with code 2 and prints `STOP` if any view has more than 10% non-ok rows.
+`results/scores_*.jsonl` is committed (see `.gitignore`); `results/raw/` is not. The script exits with code 2 and prints `STOP` if any view has more than 10% non-ok rows. It also writes a run status record beside the score file (`results/scores_gate_a1.jsonl.status.json`) — see §10.
 
 ### 3.2 Score it ✅
 ```bash
@@ -293,3 +293,47 @@ After the **pilot**:
 4. Dashboard spend at checkpoints 1, 2 and 5.
 
 Never paste: the API key, `.env`, or anything from `results/raw/` beyond the one example asked for above.
+
+---
+
+## 10. Run status record (`--status`)
+
+Every monitor run writes a small JSON status record next to its score file
+(`<out>.status.json`, or the path given by `--status`). It exists so that a
+planned, running, completed, stopped or failed run can be told apart on disk
+after the terminal is gone. It is an operational record only: it is not a
+scientific artifact and it makes no claim about spend.
+
+```bash
+python -c "import json; d = json.load(open('results/scores_gate_a1.jsonl.status.json')); \
+print(d['status'], d['partial'], d['counts'], d['exit_code'])"
+```
+
+| Field | Meaning |
+|---|---|
+| `status` | `planned` → `running` → `completed` / `stopped` / `failed`. Nothing ever moves out of a final state. |
+| `partial` | `true` for `stopped` and `failed`: the outputs are incomplete and must not be scored as a finished run. |
+| `counts` | `traces`, `records_expected`, `records_written`. `completed` requires `records_written == records_expected`. |
+| `exit_code` | The CLI exit code recorded with the final status (`0` ok, `2` stop rule, `1` failure, `4` ledger stop). Preflight failures (exit `3`) happen before the record is created, so they write no record. |
+| `error` / `stop_reason` | Why the run failed or was stopped. |
+| `metadata` | Trace path + SHA-256, prompt version, system-prompt SHA-256, views, model/provider/base URL, and — for live runs — the ledger `config_sha256`, allocation and phase. The API key is never read or stored. |
+
+Behaviour to rely on:
+
+- a run is never marked `completed` unless the score file and the id-map exist;
+- `failed` and `stopped` runs are never reported as `completed`;
+- an existing status file is never overwritten: a second run into the same
+  output directory fails loudly (`FileExistsError`), the same guard the score,
+  id-map and raw writers already apply. Re-run into a fresh directory;
+- a record that cannot be written prints a warning and does not change the
+  run's own exit code;
+- a record left at `running` means the process never made its final write (for
+  example it was killed). It stays `running` and is never upgraded to
+  `completed`; `partial: false` on a `running` record does **not** mean the run
+  finished — only `status: completed` does.
+
+What it does **not** do: it does not resume or clean up a partial run, does not
+quarantine partial outputs, does not detect a killed run, does not enforce any
+budget, and is not the frozen cross-workstream manifest schema (still
+unresolved).
+

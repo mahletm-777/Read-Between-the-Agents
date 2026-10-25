@@ -1,5 +1,7 @@
 # Analysis plan (pre-specified), pilot v2
 
+> **HISTORICAL / PRESERVED (note added 2026-10-23).** This plan governs the historical Y_H pilot only (prompt v1.1, M4 vs M3-ens primary). For current runs it is superseded by `docs/e_analysis_plan_v1_0.md` (approved by MM, 2026-10-23; see `docs/decision_log.md`). The text below is unchanged.
+
 Status: **pre-specified 2026-10-20, before any pilot monitor scores exist.** Implements `pilot_parameters.md` §0, §3–6 (frozen) and `monitor_spec.md` §6–8. Where they disagree, `pilot_parameters.md` wins. Code: `apart/analysis.py` (`ANALYSIS_VERSION = "1.0"`); every rule below is implemented there and covered by `tests/test_analysis.py`. A change after pilot scores exist goes in §9 as a dated deviation, never as a silent edit.
 
 ## 1. Estimand and unit
@@ -104,4 +106,4 @@ Everything else is **descriptive**, with unadjusted p-values where shown and no 
 
 | date | change | reason |
 |---|---|---|
-| – | none | – |
+| 2026-10-20 | Clarification (not a deviation): the sensitivity check is the three-variant check in §7 — without B-AMB {100, 120, 126}, without A-LEAN {130, 134}, without both. No "13-row" sensitivity specification exists in the repository. | Pre-analysis reconciliation; no scientific change. |

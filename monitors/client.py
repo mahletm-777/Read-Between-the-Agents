@@ -3,9 +3,10 @@
 The API key comes only from ``APART_API_KEY``. It is never logged, stored in a
 record, or written to ``repr``. Tests use ``FakeClient`` and make no calls.
 
-Every real request requires a ``SpendGuard``: it charges a worst-case
-reservation before the request is sent, refuses when the phase cap would be
-exceeded, and settles against provider usage when available.
+Every real request requires a ``LedgerGuard`` over the canonical ledger
+(``monitors.ledger``): each attempt is reserved durably before it is sent.
+``SpendGuard`` below is the legacy v1 guard; it can no longer authorize a
+request and is kept only for reading historical v1 ledgers.
 """
 
 from __future__ import annotations
@@ -17,12 +18,23 @@ import ssl
 import threading
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 from collections.abc import Mapping
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Iterator, Optional, Sequence
+
+from .ledger import (
+    LedgerError,
+    LedgerStore,
+    Policy,
+    mark_dispatched,
+    mark_unknown,
+    reserve as ledger_reserve,
+    settle_event,
+)
 
 try:  # POSIX only; the thread lock still protects a single process elsewhere.
     import fcntl
@@ -115,6 +127,10 @@ class ModelResponse:
     provider_seed: Optional[int]
     served_model: Optional[str] = None
     served_provider: Optional[str] = None
+    # Provider-reported usage exactly as returned, or None when the provider
+    # omitted it or returned it malformed. ``None`` means UNKNOWN, never zero
+    # cost; nothing is invented and no default is substituted.
+    usage: Optional[Mapping[str, Any]] = None
 
 
 @dataclass(frozen=True)
@@ -494,17 +510,107 @@ def _input_token_bound(messages: Sequence[dict]) -> int:
     return total + 64
 
 
-class ModelClient:
-    """Minimal OpenAI-compatible chat client.
+def read_v1_ledger(path: Path) -> dict:
+    """Read a historical v1 SpendGuard ledger without creating or changing anything."""
+    path = Path(path)
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        raise SpendConfigError(f"cannot read v1 ledger {path}: {exc}") from exc
+    if not isinstance(data, dict) or data.get("version") != 1:
+        raise SpendConfigError(f"{path} is not a v1 spend ledger")
+    if not isinstance(data.get("phases"), dict) or not isinstance(data.get("runs"), dict):
+        raise SpendConfigError(f"{path} is missing 'phases' or 'runs'")
+    for run_id, run in data["runs"].items():
+        if not isinstance(run, dict) or run.get("phase") not in PHASES:
+            raise SpendConfigError(f"run {run_id!r} in {path} is malformed")
+        _ledger_number(run.get("spent_usd"), f"runs.{run_id}.spent_usd")
+        _ledger_count(run.get("requests"), f"runs.{run_id}.requests")
+    return data
 
-    Endpoint/model/timeout come from ``APART_BASE_URL``, ``APART_MODEL``,
-    ``APART_MODEL_SNAPSHOT`` and ``APART_TIMEOUT_S``. Retries: exponential
-    backoff, 4 attempts (§5.5), then ``ApiError``.
+
+class LedgerGuard:
+    """Authorizes real requests against the canonical ledger (T3 S2).
+
+    Built for one opened run. Every HTTP attempt is reserved durably before it
+    is sent, marked dispatched, and then settled or marked unknown. Any ledger
+    or persistence error propagates: the caller must stop, and nothing more is
+    sent. The model comes only from the bound spend config.
+    """
+
+    def __init__(self, store: LedgerStore, policy: Policy, config_hash: str, run_id: str) -> None:
+        ledger = store.load(expected_config_hash=config_hash, policy=policy)
+        header = ledger["runs"].get(run_id)
+        if header is None:
+            raise LedgerError(f"run {run_id!r} is not open in the ledger")
+        if header["config_sha256"] != config_hash:
+            raise LedgerError("run was opened under a different config")
+        self.provider, self.model = policy.require_model()
+        provenance = header.get("provenance") or {}
+        if provenance.get("model") != f"{self.provider}/{self.model}":
+            raise LedgerError("run provenance does not name the bound model")
+        self.store = store
+        self.policy = policy
+        self.config_hash = config_hash
+        self.run_id = run_id
+        self.base_url = provenance.get("base_url")
+
+    def check_endpoint(self, base_url: str) -> None:
+        if base_url != self.base_url:
+            raise LedgerError("endpoint differs from the one recorded in the run provenance")
+
+    def reserve(self, call_id: str, attempt: int, input_tokens: int, max_tokens: int) -> dict:
+        amount = self.policy.worst_case_micro(input_tokens, max_tokens)
+        return ledger_reserve(self.store, self.policy, self.config_hash, self.run_id,
+                              call_id, attempt, f"{self.provider}/{self.model}", amount)
+
+    def dispatched(self, event_id: str) -> None:
+        mark_dispatched(self.store, self.config_hash, event_id)
+
+    def settle(self, event_id: str, usage: Any, served_model: Optional[str],
+               served_provider: Optional[str]) -> str:
+        """Settle from provider usage and return the state actually recorded.
+
+        A charge above the reservation is recorded as ``overrun`` (with a budget
+        incident) and returned as ``"overrun"``, so it is never reported to the
+        caller as an ordinary successful settlement.
+        """
+        cost = self.policy.cost_micro(usage, served_model, served_provider)
+        if cost is None:
+            mark_unknown(self.store, self.config_hash, event_id, "usage_missing_or_model_unpriced")
+            return "unknown"
+        return settle_event(self.store, self.config_hash, event_id, cost)["state"]
+
+    def unknown(self, event_id: str, reason: str) -> None:
+        mark_unknown(self.store, self.config_hash, event_id, reason)
+
+
+def validate_base_url(url: str) -> str:
+    """https only, except plain http to localhost for local stubs."""
+    parsed = urllib.parse.urlparse(url)
+    if parsed.scheme == "https" and parsed.netloc:
+        pass
+    elif parsed.scheme == "http" and parsed.hostname in ("localhost", "127.0.0.1"):
+        pass
+    else:
+        raise SpendConfigError(f"base URL must be https (got {url!r})")
+    if parsed.username or parsed.password or parsed.query:
+        raise SpendConfigError("base URL must not contain credentials or a query")
+    return url.rstrip("/")
+
+
+class ModelClient:
+    """Minimal OpenAI-compatible chat client, authorized only by a ``LedgerGuard``.
+
+    The endpoint comes from ``base_url`` or ``APART_BASE_URL`` (validated); the
+    model comes only from the guard's bound config (``APART_MODEL`` is ignored).
+    Retries: exponential backoff, ``max_attempts`` HTTP attempts, then ``ApiError``.
     """
 
     def __init__(
         self,
         *,
+        guard: Optional[LedgerGuard] = None,
         api_key: Optional[str] = None,
         base_url: Optional[str] = None,
         model: Optional[str] = None,
@@ -513,10 +619,13 @@ class ModelClient:
         max_attempts: int = 4,
         backoff_base_s: float = 1.0,
         sleep: Callable[[float], None] = time.sleep,
-        spend_guard: Optional[SpendGuard] = None,
         provider_order: Optional[Sequence[str]] = None,
         load_env: bool = True,
     ) -> None:
+        if isinstance(guard, SpendGuard):
+            raise SpendConfigError("the legacy SpendGuard cannot authorize requests; use LedgerGuard")
+        if guard is not None and not isinstance(guard, LedgerGuard):
+            raise SpendConfigError("guard must be a LedgerGuard")
         if load_env:
             load_apart_env()
         key = api_key if api_key is not None else os.environ.get("APART_API_KEY")
@@ -525,19 +634,17 @@ class ModelClient:
                 "APART_API_KEY is not set; keys are read from the environment only"
             )
         self._api_key = key
-        self.base_url = (
+        self.base_url = validate_base_url(
             base_url or os.environ.get("APART_BASE_URL") or "https://api.openai.com/v1"
-        ).rstrip("/")
-        if spend_guard is not None:
-            if not isinstance(spend_guard, SpendGuard):
-                raise SpendConfigError("spend_guard must be a SpendGuard")
-            if model is None:
-                model = spend_guard.config.model
-            elif model != spend_guard.config.model:
-                raise SpendConfigError("model does not match the spend config model")
-        self.spend_guard = spend_guard
+        )
+        self.guard = guard
+        if guard is not None:
+            if model is not None and model != guard.model:
+                raise SpendConfigError("model does not match the bound spend config")
+            guard.check_endpoint(self.base_url)
+            model = guard.model
+        self.model = model or "unconfigured"
         self.provider_order = list(provider_order or [])
-        self.model = model or os.environ.get("APART_MODEL") or "gpt-4o-mini"
         self.snapshot = snapshot or os.environ.get("APART_MODEL_SNAPSHOT") or self.model
         self.timeout_s = float(
             timeout_s if timeout_s is not None else os.environ.get("APART_TIMEOUT_S", "60")
@@ -558,11 +665,12 @@ class ModelClient:
         temperature: float,
         seed: Optional[int] = None,
         max_tokens: int = 250,
+        call_id: Optional[str] = None,
     ) -> ModelResponse:
-        if self.spend_guard is None:
-            raise SpendConfigError(
-                "spend guard not configured; refusing to send a request"
-            )
+        if self.guard is None:
+            raise SpendConfigError("no LedgerGuard configured; refusing to send a request")
+        if not isinstance(call_id, str) or not call_id.strip():
+            raise SpendConfigError("call_id is required for a guarded request")
         if isinstance(max_tokens, bool) or not isinstance(max_tokens, int) or max_tokens <= 0:
             raise SpendConfigError("max_tokens must be a positive integer")
         payload = {
@@ -578,8 +686,10 @@ class ModelClient:
         input_bound = _input_token_bound(payload["messages"])
         last_error: Optional[BaseException] = None
         for attempt in range(self.max_attempts):
-            # Charged before the request is sent; failure keeps it as worst case.
-            reservation = self.spend_guard.reserve(self.model, input_bound, max_tokens)
+            # Durable reservation and dispatch marker first; any ledger error
+            # propagates here and nothing is sent.
+            event = self.guard.reserve(call_id, attempt, input_bound, max_tokens)
+            self.guard.dispatched(event["event_id"])
             try:
                 data = self._post_json(payload)
             except urllib.error.HTTPError as exc:
@@ -589,10 +699,13 @@ class ModelClient:
                 except Exception:
                     pass
                 last_error = ApiError(f"HTTP {exc.code}: {detail}")
+                self.guard.unknown(event["event_id"], f"http_error_{exc.code}")
                 if attempt + 1 < self.max_attempts:
                     self._sleep(self.backoff_base_s * (2 ** attempt))
+                continue
             except (urllib.error.URLError, TimeoutError, ValueError) as exc:
                 last_error = exc
+                self.guard.unknown(event["event_id"], f"transport_error_{type(exc).__name__}")
                 if attempt + 1 < self.max_attempts:
                     self._sleep(self.backoff_base_s * (2 ** attempt))
                 continue
@@ -600,19 +713,22 @@ class ModelClient:
                 text = data["choices"][0]["message"]["content"]
             except (KeyError, IndexError, TypeError) as exc:
                 last_error = exc
+                self.guard.unknown(event["event_id"], "malformed_response")
                 if attempt + 1 < self.max_attempts:
                     self._sleep(self.backoff_base_s * (2 ** attempt))
                 continue
+            # What the provider reported, or None. The requested model is never
+            # substituted: pricing falls back to the bound model inside
+            # ``Policy.cost_micro`` on its own, but provenance must show "unknown".
             served_model = (
-                data.get("model") if isinstance(data.get("model"), str) else self.model
+                data.get("model")
+                if isinstance(data.get("model"), str) and data.get("model").strip()
+                else None
             )
             provider = data.get("provider") if isinstance(data.get("provider"), str) else None
-            self.spend_guard.settle(
-                reservation,
-                data.get("usage"),
-                served_model=served_model,
-                provider=provider,
-            )
+            raw_usage = data.get("usage")
+            usage = dict(raw_usage) if isinstance(raw_usage, Mapping) else None
+            self.guard.settle(event["event_id"], raw_usage, served_model, provider)
             return ModelResponse(
                 text=text,
                 response_id=data.get("id"),
@@ -621,6 +737,7 @@ class ModelClient:
                 provider_seed=seed,
                 served_model=served_model,
                 served_provider=provider,
+                usage=usage,
             )
         raise ApiError(f"model call failed after {self.max_attempts} attempts") from last_error
 
@@ -682,6 +799,7 @@ class FakeClient:
         temperature: float,
         seed: Optional[int] = None,
         max_tokens: int = 250,
+        call_id: Optional[str] = None,
     ) -> ModelResponse:
         index = len(self.calls)
         self.calls.append(
@@ -690,6 +808,7 @@ class FakeClient:
                 "temperature": temperature,
                 "seed": seed,
                 "max_tokens": max_tokens,
+                "call_id": call_id,
             }
         )
         text = self._responder(messages, temperature, seed, index)

@@ -26,28 +26,25 @@ def run_phase_a_trial(
     `receiver_fn(scenario_id, condition_name, delivered_message) -> raw_output`
     is caller-supplied; any exception it raises is caught and recorded in
     `.error`, never silently treated as a successful trial.
+
+    Fail-closed and stage-tagged: every returned result carries an explicit
+    outcome. When a trial fails, `.error_stage` records which step raised
+    ("condition", "message" or "receiver"), so per-condition exclusion
+    accounting does not misattribute a configuration problem to the receiver.
     """
     trial_id = f"{scenario_id}_{condition_name}"
     metadata = PhaseATrialMetadata(scenario_id=scenario_id, condition=condition_name, trial_id=trial_id)
+    stage = "condition"
     try:
         condition = get_phase_a_condition(condition_name)
+        stage = "message"
         announced_content = compose_sender_message(sender_action)
         message = build_phase_a_message(announced_content, condition)
         delivered_message = message.content if message.delivered else None
 
+        stage = "receiver"
         raw_output = receiver_fn(scenario_id, condition_name, delivered_message)
         parsed = parse_receiver_response(raw_output)
-
-        return PhaseATrialResult(
-            metadata=metadata,
-            sender_action=sender_action,
-            message_content=message.content,
-            message_delivered=message.delivered,
-            receiver_raw_output=raw_output,
-            parsed_action=parsed.action,
-            validity=parsed.validity,
-            reason=parsed.reason,
-        )
     except Exception as exc:
         return PhaseATrialResult(
             metadata=metadata,
@@ -55,7 +52,19 @@ def run_phase_a_trial(
             message_content="",
             message_delivered=False,
             error=str(exc),
+            error_stage=stage,
         )
+
+    return PhaseATrialResult(
+        metadata=metadata,
+        sender_action=sender_action,
+        message_content=message.content,
+        message_delivered=message.delivered,
+        receiver_raw_output=raw_output,
+        parsed_action=parsed.action,
+        validity=parsed.validity,
+        reason=parsed.reason,
+    )
 
 
 def run_phase_a_trials_for_scenario(

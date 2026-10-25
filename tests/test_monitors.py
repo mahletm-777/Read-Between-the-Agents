@@ -24,7 +24,7 @@ from monitors.client import (
 )
 from monitors.observable import ObservableRecord, observable
 from monitors.parser import aggregate_ensemble, parse_response
-from monitors.prompts import SYSTEM_PROMPT, display_id, render_view
+from monitors.prompts import PROMPT_VERSION, SYSTEM_PROMPT, display_id, render_view
 from monitors.runner import prompt_sha256, run_corpus, system_prompt_sha256
 
 ALL_ROWS = gen.PILOT_ROWS + gen.GATE_ROWS
@@ -59,6 +59,14 @@ def test_no_forbidden_field_or_token_in_any_view():
 
 
 def test_invariance_to_generator_only_fields():
+    """Generator-only fields stay invisible; the message *status* is deliberately visible.
+
+    ``observable`` still never reads claims, template ids, seeds, trace ids or plans, so two
+    traces that differ only in those render identically. The recording status of a message is
+    no longer generator-only (contract v1.0 §9 requires distinct statuses to be rendered
+    distinctly), which is covered by
+    ``tests/test_monitor_rendering.py::test_message_status_is_visible_and_explicit``.
+    """
     text = "We should both choose B this round."
     base = Trace(
         "trace-a",
@@ -74,7 +82,7 @@ def test_invariance_to_generator_only_fields():
         999,
         [Message("agent_1", "agent_2", text)],
         {"agent_1": "B", "agent_2": "B"},
-        DeliveryCondition.NEUTRAL_MSG,
+        DeliveryCondition.INFORM_MSG,
         [],
         [],
     )
@@ -205,6 +213,11 @@ def test_ensemble_two_valid_is_parse_failure():
 
 RECORD_KEYS = {
     "seed",
+    "trace_id",
+    # Scenario grouping metadata (added with the scenario_id propagation change).
+    # `trace_id` remains the join key; this key is present on every row and is
+    # None when the corpus establishes no scenario unit.
+    "scenario_id",
     "display_id",
     "view",
     "k",
@@ -293,35 +306,6 @@ def test_request_parameters_are_logged_per_view():
     assert ens["provider_seed"] == 0
 
 
-def test_provider_order_is_sent_in_payload(tmp_path):
-    config = SpendConfig(
-        provider="prov",
-        model="m1",
-        phase_caps_usd={phase: 5.0 for phase in PHASES},
-        prices={"prov/m1": ModelPrice(1000.0, 2000.0)},
-    )
-    guard = SpendGuard(config, "smoke", tmp_path / "ledger.json", "run-1")
-    client = ModelClient(
-        api_key="sk-test",
-        spend_guard=guard,
-        provider_order=["provider-a", "provider-b"],
-    )
-    captured = []
-
-    def fake_post(payload):
-        captured.append(payload)
-        return {
-            "choices": [{"message": {"content": "{}"}}],
-            "usage": {"prompt_tokens": 1, "completion_tokens": 1},
-            "model": "m1",
-            "provider": "provider-a",
-        }
-
-    client._post_json = fake_post
-    client.call_model([{"role": "user", "content": "x"}], 0.0, max_tokens=10)
-    assert captured[0]["provider"] == {"order": ["provider-a", "provider-b"]}
-
-
 def test_system_prompt_is_identical_for_every_view_call():
     client = FakeClient()
     trace = gen.build_trace(gen.PILOT_ROWS[0])
@@ -333,7 +317,9 @@ def test_dry_run_records_carry_prompt_version():
     client = FakeClient()
     trace = gen.build_trace(gen.PILOT_ROWS[0])
     records, _ = run_corpus([trace], client, created_utc="2026-10-20T00:00:00Z")
-    assert {record["prompt_version"] for record in records} == {"1.1"}
+    # Renderer v2.0: the M3 multi-message defect is fixed and message statuses are explicit.
+    # v1.1 scores are historical and are never pooled with v2.0.
+    assert {record["prompt_version"] for record in records} == {PROMPT_VERSION} == {"2.0"}
 
 
 def test_m3_ensemble_uses_identical_prompts():

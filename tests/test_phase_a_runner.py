@@ -89,3 +89,45 @@ def test_receiver_exception_is_recorded_as_error_not_raised():
     )
     assert result.error == "boom"
     assert result.validity is None
+
+
+# --- Regression tests for stage-tagged, fail-closed exclusion accounting.
+#
+# Confirmed defect (fixed 2026-10-22): every exception -- including an unknown
+# condition name -- was recorded identically, so per-condition exclusion counts
+# could misattribute a configuration problem to the receiver.
+
+
+def test_receiver_failure_records_stage_receiver():
+    def failing_receiver(scenario_id, condition_name, delivered_message):
+        raise RuntimeError("boom")
+
+    result = run_phase_a_trial(
+        scenario_id="s1", condition_name=NO_MESSAGE, sender_action="B", receiver_fn=failing_receiver,
+    )
+    assert result.error == "boom"
+    assert result.error_stage == "receiver"
+
+
+def test_unknown_condition_is_recorded_fail_closed_with_stage_condition():
+    result = run_phase_a_trial(
+        scenario_id="s1",
+        condition_name="not_a_condition",
+        sender_action="B",
+        receiver_fn=lambda *_: "B",
+    )
+    # Fail closed: a record is still returned, never an exception, and the stage
+    # says the condition lookup failed rather than blaming the receiver.
+    assert result.error is not None
+    assert "not_a_condition" in result.error
+    assert result.error_stage == "condition"
+    assert result.validity is None
+
+
+def test_successful_trial_has_no_error_stage():
+    receiver = DeterministicFakeReceiver({("s1", NO_MESSAGE): "A"})
+    result = run_phase_a_trial(
+        scenario_id="s1", condition_name=NO_MESSAGE, sender_action="B", receiver_fn=receiver.respond,
+    )
+    assert result.error is None
+    assert result.error_stage is None
