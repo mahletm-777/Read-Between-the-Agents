@@ -68,7 +68,7 @@ The released data, its per-file sha256 values, schemas and provenance are docume
 are shipped as a release asset:
 
 - `apart_data_2026-10-25.zip` — sha256 `2f1f2a073f1cb62bdc7a8fcd59443a89bc8ac42df6d0d7abe3d29f9ef66f5905`
-- **https://github.com/mahletm-777/Read-Between-the-Agents/releases/tag/v1.0**
+- **https://github.com/mahletm-777/Read-Between-the-Agent/releases/tag/v1.0**
 
 Download and verify the asset, then reproduce the reported numbers from it, all offline:
 
