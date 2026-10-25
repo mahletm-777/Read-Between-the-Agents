@@ -25,12 +25,20 @@ rule set cannot resolve falls to `ambiguous` by design, not by omission):
   validity="valid"      -- exactly one unique, non-negated action token
                           resolved. reason is None.
 
-Token boundary rule: case-insensitive whole-word match for "A"/"B" only
-(regex word boundaries), so substrings like "CARBON" or "BAD" never match.
+Token boundary rule: anchored, whole-word match for the action labels "A"/"B"
+(case-insensitive), so substrings like "CARBON" or "BAD" never match. One
+anchored exception: a lower-case "a" that is immediately followed by another
+word ("a good idea") is the English indefinite article, not a choice, and is not
+treated as an action label. An upper-case "A" is always treated as a label, so a
+sentence-initial article ("A good idea is to choose B.") still yields a spurious
+A token; that residual limitation is documented rather than special-cased,
+because no anchored rule separates "A works for me." from "A good idea." without
+semantic context.
 
 Negation rule: a fixed small marker set ("not", "never", "won't",
-"will not", "don't", "no") is checked in the text segment between the end
-of the previous matched token (or the start of the string, if none) and
+"will not", "don't", "no") is matched as WHOLE WORDS -- never as substrings, so
+"know", "cannot" and "another" are not negations -- in the text segment between
+the end of the previous matched token (or the start of the string, if none) and
 the start of the current match, capped at a short fixed radius
 (`_NEGATION_WINDOW_CHARS`). Bounding the window at the previous match's end
 prevents one negation marker from being misapplied across an earlier,
@@ -39,19 +47,25 @@ before resolution -- it is never promoted to "the other action": that
 would be an invented inference this narrow rule set does not support.
 
 Hedging rule: a fixed small marker set ("might", "maybe", "could",
-"perhaps") appearing anywhere in the text marks the whole response as
+"perhaps") matched as WHOLE WORDS ("mighty" is not a hedge) and appearing
+anywhere in the text marks the whole response as
 hedged, regardless of which token(s) are present.
 """
 import re
 from dataclasses import dataclass
 from typing import Literal, Optional
 
+# Action labels. Anchored: a lone letter "A"/"B", case-insensitive, with the
+# single article exception for a lower-case "a" (see the module docstring).
 _TOKEN_RE = {
-    "A": re.compile(r"\bA\b", re.IGNORECASE),
-    "B": re.compile(r"\bB\b", re.IGNORECASE),
+    "A": re.compile(r"\bA\b|\ba\b(?!\s+\w)"),
+    "B": re.compile(r"\bB\b|\bb\b"),
 }
-_NEGATION_MARKERS = ("not", "never", "won't", "will not", "don't", "no")
-_HEDGE_MARKERS = ("might", "maybe", "could", "perhaps")
+# Whole-word alternations. Substring matching here was a defect: "know",
+# "cannot" and "another" must not read as negations, and "mighty" must not read
+# as a hedge.
+_NEGATION_RE = re.compile(r"\b(?:will not|not|never|won't|don't|no)\b")
+_HEDGE_RE = re.compile(r"\b(?:might|maybe|could|perhaps)\b")
 _NEGATION_WINDOW_CHARS = 30
 
 
@@ -83,8 +97,7 @@ def parse_receiver_response(raw) -> ParsedResponse:
     if not text:
         return _invalid("empty_input")
 
-    lower_text = text.lower()
-    if any(marker in lower_text for marker in _HEDGE_MARKERS):
+    if _HEDGE_RE.search(text.lower()) is not None:
         return _ambiguous("hedged_or_unresolved")
 
     matches = []
@@ -98,7 +111,7 @@ def parse_receiver_response(raw) -> ParsedResponse:
     prev_end = 0
     for start, end, action in matches:
         window = text[max(prev_end, start - _NEGATION_WINDOW_CHARS):start].lower()
-        if not any(marker in window for marker in _NEGATION_MARKERS):
+        if _NEGATION_RE.search(window) is None:
             surviving.add(action)
         prev_end = end
 

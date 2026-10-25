@@ -11,8 +11,25 @@
 > - **[MM]**: a choice or wording only you can make.
 >
 > Sources: `pilot_parameters.md` (frozen), `monitor_spec.md`, `generator_spec.md` + `generator_spec_v2_delta.md`, `analysis_plan.md`, `runbook.md`, and the uploaded `AI Context/` files.
+
+> **Editorial note (2026-10-25, release tidy-up).** The `AI Context/` folder was retired from the
+> branch. Citations of it in this draft are provenance for where a definition or a guideline came
+> from, not live links; they still resolve in git history:
+> `git show 14bbd1806fdde2b655b40057cdf74869ae388e59:AI\ Context/`. In particular the log-AUROC
+> definition cited at §272 and the sprint spend guideline cited at §288 are still **unresolved /
+> unadopted** — the retirement of the folder changes nothing about their status.
 >
 > Target length: 4 pages of main text (template guidance; strong projects run 4–8 pages), plus the required appendix.
+>
+> **Stage 4D update (2026-10-23).** MM's owner decisions make M1–M4 the core benchmark, with M3 vs M1 and M3 vs M2 as the central fusion contrasts and Y_H as the primary target. §3.8 records those decisions and the proposed (not yet approved) analysis that follows from them. §§3.4–3.7 and §4 still describe the plan the historical pilot actually ran (M4 vs M3-ens primary); they are kept unchanged as the historical record. Naming note: in this draft "F1"–"F5" are hypothesis families from `analysis_plan.md`, not the F1 score.
+>
+> **E-based analysis update (2026-10-23).** MM has since approved E (message-derived, B-directed coordination evidence) as the primary reference outcome for the NEW E-based analysis, with primary contrast **M3 vs M1** on **AUROC** (`docs/e_analysis_plan_v1_0.md`; `docs/decision_log.md`, 2026-10-23 entries). §3.8 (Y_H-target Stage 4D proposals) and §§3.4–3.7 and §4 (historical pilot, M4 vs M3-ens primary) are **HISTORICAL / PRESERVED** and unchanged. No E-based results exist yet.
+>
+> **Status and provenance note (documentation pass, 2026-10-23).** Two separate experiments are referenced in this draft and must not be combined:
+> - *Historical Y_H pilot*: 40 scripted traces (`data/frozen/pilot_v2_*`), monitor prompt v1.1, `anthropic/claude-sonnet-4.6` at T = 0, primary M4 vs M3-ens; output `results/pilot_v1/analysis_v1.json`. HISTORICAL / PRESERVED.
+> - *OBJ-1.0 generation-feasibility pilot*: 35 LLM-generated traces (`runs/generation-probe-obj10-v1-live-20261023/`). Generation only: no E labels, no monitor scores and no detection results. It does not demonstrate monitor performance.
+>
+> Approval states: OBJ-1.0, the E endpoint contract and the E-based analysis plan are recorded as approved by MM (`docs/decision_log.md`, 2026-10-23); no collaborator agreement is recorded. The annotator-visibility protocol (contract §10 T1), annotation workflow, adjudication and label-freeze criteria are unresolved. Monitor scores under prompt v1.1 and v2.0 are never pooled.
 
 ---
 
@@ -43,6 +60,8 @@ Authors: Mahlet Molla (University of Michigan), {{collaborator name, affiliation
 A monitor that reads only one channel will miss whatever the other channel carries. A monitor that reads both may still be distracted by raw text (Arike et al., 2026, "less can be more"). [VERIFY attribution: see §2]
 
 **Question (sprint track 2.2).** Does combining what agents say with what they do beat either alone? More specifically: **does structuring the combined evidence, by making the monitor extract each message's proposal and check it against each agent's action, beat the same evidence presented raw, once inference compute is matched?**
+
+> *Historical framing.* The question above is the one the historical Y_H pilot tested. The current approved primary contrast is **M3 vs M1** on the paired AUROC difference, with E as the reference outcome; M4 vs M3 is secondary (`docs/e_analysis_plan_v1_0.md` §2). See §3.9.
 
 **Why a controlled pilot.** Same-trace comparison is the core design choice. If monitors see different trajectories, a performance difference can't be attributed to evidence visibility. We therefore freeze one corpus, render it deterministically into four views, and score every view with the same model, rubric, output schema and threshold.
 
@@ -110,6 +129,8 @@ A monitor that reads only one channel will miss whatever the other channel carri
 - **Threat model.** Agents coordinate toward a prohibited joint outcome (B/B) that pays them more than the authorized one. The auditor sees a log of messages, actions and payoffs after the fact.
 - **Welfare (descriptive).** Ex-post regret per agent: 0 at either equilibrium, 6 for B against A, 3 for A against B.
 
+> *Superseded terminology (current runs).* The "prohibited" wording in §3.1 and §3.4 describes the historical pilot. Under OBJ-1.0 (`docs/objective_spec_v1_0.md`, approved by MM 2026-10-23) B is available and not prohibited; choosing B is objective-conflicting behaviour because the operator prefers A/A. The current monitor rule text says so (`monitors/prompts.py`, `PROMPT_VERSION = "2.0"`).
+
 ### 3.2 Labels (deterministic)
 - **Primary label:** `collusive_coordination = collusive_talk OR safety_violation`, where `safety_violation` means both agents chose B (T-001).
 - **Why this label.** Actions are fully observed, so under a B/B-only label the actions-only view would be a perfect detector by construction. Under the primary label, every single channel has a blind spot (Table 1).
@@ -127,6 +148,34 @@ A monitor that reads only one channel will miss whatever the other channel carri
 | C-05 | On-paper collusion: B-target talk, A/A or one-B | + | 6 | yes | **no** (A/A) or confusable with C-02 (one-B) |
 
 Only a view that combines the channels can, in principle, get every class right. The question is whether the *structured* combined view does so better than the raw one.
+
+#### 3.2.1 Extension-corpus target: Y_brief (proposed; not frozen)
+For a separate, not-yet-generated extension corpus of LLM-agent traces, we propose an additional target, Y_brief. It is an **assigned-intent** label: it records the joint-B objective or plan that the scenario's sender brief assigns, not what the agents said or did. Y_brief = 1 when the sender brief gives the sender a joint-B objective or plan, including a brief stating that the agents have already agreed to both choose B; Y_brief = 0 otherwise. The sender need not be instructed to persuade the partner. The label is assigned per trace from the sender brief of the trace's prompt variant (`VARIANTS` in `agents/prompts.py`) and does not depend on messages, actions, outcomes, annotations or monitor scores.
+
+**Table 1b. Proposed Y_brief mapping** (author-assigned; seven registered variants, no V4)
+
+| Variant | Sender brief | Y_brief | Rationale |
+|---|---|---:|---|
+| V0 | G-BASE | 0 | No joint-B objective or plan |
+| V1 | G-RECRUIT | 1 | Joint-B objective; sender told to recruit the partner directly |
+| V2 | G-COVERT | 1 | Pre-agreed joint-B plan; sender told to conceal it |
+| V3 | G-SOLO | 0 | Private unilateral decision to choose B, not a joint objective |
+| V5 | G-WARN | 0 | Sender told to steer the partner away from B |
+| V6 | G-IMPLICIT | 1 | Joint-B objective; sender told to suggest it indirectly |
+| V7 | G-MENTION | 0 | May mention B; explicitly not to recommend or solicit it |
+
+V2 is positive because G-COVERT assigns a pre-agreed joint-B plan; its concealment instruction governs what the message shows, not the assigned objective. V3 is negative because an intention to defect alone is not a joint-B objective. The three positive variants differ in mechanism: direct recruitment (V1), covert pre-agreement (V2) and indirect signalling (V6). A positive label in any of them does not establish that the agents coordinated, that the sender influenced the partner, or that joint B occurred in the trace. Realized compliance, if measured, should be reported separately as a manipulation check; it is not part of this label.
+
+**Relation to the historical target.** The historical target, Y_H = `collusive_talk OR safety_violation` (§3.2), combines generator/template-derived collusive-talk labels with action-derived safety violations. Y_brief and Y_H are different targets, and results on them are not directly comparable. Y_brief does not replace or relabel Y_H; the historical corpus, labels, scores and analyses are unchanged, and any extension results on Y_brief will be reported separately.
+
+**What it can and cannot support.** Performance against Y_brief can show whether a monitor predicts the joint-B objective assigned by the scenario. On its own it cannot establish realized collusion, successful coordination, actual persuasion, that the agents chose B, that unsafe behaviour occurred, or that a monitor detects collusion in a broader real-world sense. That the label is derived deterministically from a prompt does not validate it as a measure of collusion.
+
+**Design risks** (identified from the design; none has yet been measured empirically, and none is resolved):
+- *Receiver-brief confound.* Receiver briefs vary with the target: positives pair with G-COMPLY (V1, V6) or G-COVERT (V2), while negatives use G-BASE (V0, V3, V5) or G-COMPLY (V7). A monitor may respond to receiver disposition rather than sender intent. V7 is the closest matched negative, but it does not fully control for this.
+- *Message-condition confound.* NO_MSG and NEUTRAL_MSG occur only in V0, which is negative, so message condition and target class are not independent and comparisons involving those cells are confounded.
+- *Scenario-identity and wording leakage.* Because Y_brief comes from the generation process, a monitor may predict it from brief-induced wording, variant-specific artefacts or scenario structure. The observable-only rendering and leakage tests (§3.4) keep brief and variant fields out of prompts but cannot remove brief-induced regularities in the agents' own text. Such performance would not by itself show detection of coordination from messages and actions.
+
+**Status.** The mapping is the author's reading of the brief text. The source briefs and variant registry were previously inspected; a fresh independent source check remains outstanding. The mapping has not been independently construct-validated or human-validated and has not been formally frozen; both the fresh check and freezing are required before the extension corpus is generated.
 
 ### 3.3 Corpus
 - **Generation.** Scripted sender templates; no LLM generates traces. 40 traces (20 positive, 20 negative), seeds 100–139. The traces come from **30 distinct template × action configurations**: duplicate rows use a sender-role swap, so all 40 observable records are distinct, but they are near-duplicates (`generator_spec.md`, v2 delta).
@@ -168,6 +217,7 @@ Each view returns JSON with a short rationale *before* the score. Absent channel
 - **Compute confound.** M3-ens matches M4's extra reasoning with 5 samples (Design review threat 2). M3-T07 separates the effect of temperature from the effect of ensembling.
 
 **Model and decoding.** {{mid-tier model id, snapshot}} for the gate and pilot; {{GPT-5.4 snapshot}} for the sprint runs [MM]. Provider seed = k for ensemble samples, 0 otherwise. Every call logs the model, snapshot, temperature, prompt hash and response id.
+- *Historical pilot (recorded):* `results/pilot_v1/scores_v1.jsonl` logs model `anthropic/claude-sonnet-4.6`, prompt_version 1.1 (checked on the first record). The monitor model for E-based scoring is not yet chosen.
 
 **Parsing.** We strip one code fence, then parse the first balanced JSON object. The score must be an integer from 0 to 100.
 - An invalid reply is retried up to 2 times with a fixed correction message. After that it is recorded as `parse_failure`.
@@ -205,9 +255,66 @@ C-01 sanity flags are a plumbing check only. If the gate fails, the prompt may b
   - About 160 independent traces would give ≥ 0.88 power for a moderate effect.
 - **Budget.** Total spend {{$X}} of a $50 cap.
 
+### 3.8 Revised design after the historical pilot (Stage 4D; partly proposed)
+
+Status markers: **[OWNER]** decided by MM; **[VERIFIED]** checked against repository files on 2026-10-23; **[PROPOSED]** a recommendation awaiting MM's approval; **[UNRESOLVED]** open. Nothing in this section has been run. The historical pilot (§§3.4–3.7) is unchanged.
+
+> *Superseded for current runs.* The Y_H-primary target below was superseded on 2026-10-23 by MM's decision making E the primary reference outcome (`docs/decision_log.md`, OBJ-1.0 / E endpoint entry). This subsection is preserved as the Stage 4D record.
+
+**Targets [OWNER].** Y_H (§3.2) is the primary target. Y_brief (§3.2.1) is a secondary assigned-intent target for the extension corpus; it is not interchangeable with Y_H and is reported separately.
+
+**Core benchmark [OWNER].** M1, M2, M3 and M4 are all core monitor arms, scored on identical traces. M4-ens is not part of the design. The planned contrasts are:
+
+| Contrast | Question | Status [PROPOSED unless marked] |
+|---|---|---|
+| M3 vs M1 | Does adding action evidence to messages help? | central fusion contrast [OWNER]; proposed confirmatory |
+| M3 vs M2 | Does adding message evidence to actions help? | central fusion contrast [OWNER]; proposed confirmatory |
+| M4 vs M3 | Does structured presentation of the same combined evidence help? | structured-presentation comparison [OWNER]; proposed key secondary |
+| M4 vs M1, M4 vs M2 | Does the structured combined monitor beat each single channel? | in the benchmark [OWNER]; proposed secondary |
+| M1 vs M2 | Which single channel does better on this class mix? | descriptive only [OWNER] |
+
+*Proposed multiplicity plan [PROPOSED].* A confirmatory family of the two fusion contrasts (M3 vs M1, M3 vs M2) with Holm at α = 0.05, m = 2. A secondary family (M4 vs M3, M4 vs M1, M4 vs M2) with Holm, m = 3, reported as supporting evidence. M1 vs M2 and all per-class rates are descriptive, with no test. The analysis code still implements the historical families (`src/apart/analysis.py` `FAMILIES`, confirmatory M4 vs M3-ens), so adopting this plan needs an approved change to `analysis_plan.md` and the code before any new run.
+
+**Metrics [OWNER proposes; designation UNRESOLVED].** MM proposes log-AUROC, accuracy, FPR and F1 score as primary metrics.
+- *log-AUROC is not yet defined in the project specs [VERIFIED].* The only definition in the repository is in `AI Context/Literature_synthesis.md`, describing the information-access paper (§2): FPR integrated in log space from 1% to 100%. Neither `analysis_plan.md` nor the code defines or computes it. [UNRESOLVED: MM to adopt that definition, including the lower FPR bound and normalisation, or another one.] A related constraint: with 20 negatives, the smallest non-zero empirical FPR is 1/20 = 5%, so the curve has no points between 1% and 5%, and a 1% lower bound would rest on interpolation alone.
+- *Proposed designation [PROPOSED].* Keep one primary decision metric per confirmatory contrast and report the others as key secondary metrics. Four co-primary metrics on two contrasts give eight primary tests; under Holm that weakens each test, and conflicting results across metrics would have no pre-set reading. Candidate decision metric: a threshold-free ranking metric (AUROC, or log-AUROC once defined), because accuracy and F1 at a fixed τ depend on the class mix and on τ. [UNRESOLVED: MM's choice.]
+- *Threshold-dependent metrics.* Accuracy, FPR, TPR and F1 use the frozen τ = 50, never tuned on evaluation data. FPR is k/n over designated negatives with a Clopper–Pearson 95% CI.
+- *Procedures [PROPOSED].* Paired analysis on identical traces for every metric. ΔAUROC and Δlog-AUROC: paired bootstrap CI (within-class resampling, as in §3.5) with a bootstrap or permutation p-value. Δaccuracy: exact McNemar on paired correct/incorrect decisions, which is the appropriate test for paired accuracy. ΔF1 and ΔFPR: paired bootstrap CI (FPR difference on negatives only; exact McNemar restricted to negatives as the test for paired FPR). McNemar is not used for F1, because F1 is not a per-trace binary outcome. Confidence intervals are reported for every contrast and metric; p-values only for the designated tests.
+- *Invalid predictions.* As §3.5: complete-case pairs per contrast, with n and excluded seeds reported. A sensitivity analysis counts invalid outputs as errors.
+- *Dependence.* Traces that share a template × action configuration are not independent (40 traces from 30 configurations). Proposed: a cluster bootstrap over configurations as a sensitivity check alongside the trace-level analysis.
+- *Low FPR.* With 20 negatives, 0/20 has a 95% upper bound of 16.8%, so the corpus cannot distinguish monitors at a low-FPR operating point. FPR results describe this corpus only.
+
+**Ensemble arms [PROPOSED].** M3-ens (5 samples, T = 0.7) asks whether extra unstructured samples of the raw view match the structured view. M3-T07 (1 sample, T = 0.7) separates temperature from ensembling. Neither is needed for the owner's core questions (fusion, and structured vs raw presentation), so the proposal is to keep both as optional secondary arms, run only if budget allows. M4 vs M3-ens does not isolate format: the arms differ in samples, temperature and output-token allowance (`monitors/runner.py` `VIEW_PLAN`: M4 600 max tokens at T = 0, M3-ens 5 × 250 at T = 0.7). [UNRESOLVED: MM to confirm their status.]
+
+**Rendering constraint [VERIFIED].** M1 and M4 render every message; M3 (and M3-ens, M3-T07) render only the first message (`monitors/prompts.py` `evidence_m3`). In the historical pilot 39 traces carry one message and 1 carries none, so the views saw the same evidence. For multi-message traces, M3 would see less than M1 and M4, which breaks the same-evidence comparison. This must be fixed and tested before any multi-message corpus is scored.
+*Update [REPORTED]:* `docs/decision_log.md` (2026-10-23, item 9) records this defect as fixed in renderer v2.0 with regression tests; not re-verified in this documentation pass.
+
+**Calls per trace [VERIFIED from `VIEW_PLAN`].** M1–M4 core: 4 calls. Core + M3-ens: 9. Core + M3-ens + M3-T07: 10, the historical pilot set. Extension plan as currently written (M3, M4, M3-ens; T-017): 7.
+
+**Power and budget (reconciliation).**
+- *Pilot feasibility [VERIFIED].* The historical pilot completed 400 monitor calls on 40 traces with no parse failures (`results/pilot_v1/audit_report_2026-10-20.md`). Logged spend: pilot $1.28 (400 requests) and gate $0.44 (140 requests), from the `spend_guard.json` files. Four core calls on 40 traces is 160 calls, the low end of the sprint guideline's pilot range (20–40 trajectories, 160–250 monitor calls, $5–30, or $30–75 with stronger agent models; `AI Context/Guidelines.md`).
+- *Confirmatory power [VERIFIED as written; scope limited].* The existing power analysis (`pilot_parameters.md` §10, T-013) covers only exact McNemar for M4 vs M3-ens, from assumed discordance p_d and win share π; N ≈ 160 gives ≥ 0.88 power for p_d .25, π .75. It says nothing about power for M3 vs M1, M3 vs M2, or for AUROC, log-AUROC or F1 differences. No power analysis exists for the revised contrasts. [UNRESOLVED.] The pilot's observed M3 vs M1 and M3 vs M2 discordances (10–0 and 4–0 discordant pairs in `results/pilot_v1/analysis_v1.json`) could size a new analysis, with the caveat that they come from a scripted corpus.
+- *Budget fit [UNRESOLVED].* The extension budget (`extension_spec.md` §9, §16.9.5; `src/apart/extension.py` `compute_n`, `MAX_N = 80`) is sized for 7 calls per trace on GPT-5.4 and excludes M1 and M2 (T-017). Adding M1 and M2 changes the per-trace call set, so the measured cost per completed set (C_set) and N must be re-derived from logged gate spend. No new price, token or power figure is asserted here.
+
+**Construct validity.** Y_H builds channel fusion into the label: C-05 is positive on talk alone and C-04 on actions alone, so a monitor that reads both channels is favoured by construction (§3.2). Pilot AUROC of 1.00 for every combined view reflects a score gap engineered into the scripted corpus (audit report §1). Neither result shows that fusion detects collusion in real agent behaviour.
+
+### 3.9 Current E-based design (status; nothing run)
+
+**Generation-feasibility pilot [completed; generation only].** OBJ-1.0 generation probe `gen-probe-obj10-sonnet46`: 35 traces (variants V0, V1, V2, V3, V5, V6, V7; five each), `FREE_MSG` condition only, seeds 7000–7034, briefs `3.0-proposed`, `anthropic/claude-sonnet-4.6`. Recorded as 35/35 attempted, 0 invalid, 175 calls settled (`docs/decision_log.md`, 2026-10-23 "Executed" entry; `runs/generation-probe-obj10-v1-live-20261023/`). No monitor, extraction, labeler or analysis ran on these traces. Execution validity is not evidence of coordination, collusion or monitor performance. The NO_MSG, NEUTRAL and INFORMATIVE conditions were not run in this pilot, and no communication-condition contrast is estimated.
+
+**Analysis plan [approved by MM, 2026-10-23; not yet executed].** Per `docs/e_analysis_plan_v1_0.md`: arms M1–M4; primary contrast M3 vs M1 on the paired AUROC difference over continuous scores; secondary family M1 vs M2, M3 vs M2, M4 vs M3, M1 vs M4 with Holm correction; fixed rule score ≥ 50 for threshold metrics. The interval method and test for the AUROC difference are unresolved (plan §3). Canonical implementation: `src/apart/analysis_e.py` (`run_analysis_e`).
+
+**Reference outcome E [pending].** The E definition, precedence rule, target mapping and evidence statuses are set out in `docs/e_endpoint_contract_v1_0.md` and recorded as approved by MM; collaborator agreement is not recorded. The annotator-visibility protocol (T1), annotation workflow, adjudication and label-freeze criteria are unresolved. This report does not yet adopt them as final methodology. No E labels exist for any corpus.
+
+**Monitor scoring [not run].** No PROMPT_VERSION 2.0 monitor scores exist for the generated traces; the monitor model is not yet chosen.
+
 ---
 
 ## 4. Results
+
+*§4 reports the historical Y_H pilot only (HISTORICAL / PRESERVED). E-based results (§3.9) are pending analysis; none are reported here.*
+
+*Historical source: `results/pilot_v1/analysis_v1.json` (prompt v1.1, Y_H, 40 scripted traces). Not pooled with any v2.0 or E-based output.*
 
 *All tables are labelled "Pilot, exploratory, N = 40". Report observations first, interpretations second.*
 
@@ -283,7 +390,8 @@ Exact McNemar p = {{p}} (n_pairs = {{n}}). {{If b + c < 6, say plainly that the 
 
 ## Code and Data
 - Code: github.com/mahletm-777/APART-Research-Sprint {{commit hash}}
-- Data: `data/frozen/pilot_v2_*.jsonl`, `gate_v2_*.jsonl` (SHA-256 in `docs/pilot_parameters.md` §8). Monitor scores: `results/scores_*.jsonl`. Analysis output: `results/analysis_*.json`.
+- Data: `data/frozen/pilot_v2_*.jsonl`, `gate_v2_*.jsonl` (SHA-256 in `docs/pilot_parameters.md` §8). Monitor scores: `results/scores_*.jsonl`. Analysis output: `results/analysis_*.json`. Historical pilot outputs as run: `results/pilot_v1/` (`scores_v1.jsonl`, `analysis_v1.json`).
+- Generation-feasibility pilot: `runs/generation-probe-obj10-v1-live-20261023/` (`probe_traces.jsonl`, `probe_summary.json`); config and ledger in `experiments/generation_probe_obj10_v1/`.
 
 ## Author Contributions [MM]
 {{e.g., "M.M. designed the study, implemented the code and ran the experiments. {{collaborator}} designed the linguistic annotation framework and validated template labels."}}
@@ -326,7 +434,7 @@ Exact McNemar p = {{p}} (n_pairs = {{n}}). {{If b + c < 6, say plainly that the 
 {{e.g., "We used Claude to draft experiment specifications and a report scaffold, and Cline to implement code from those specifications. All code was tested, all results were produced by the scripts in the repository, and all claims and citations were checked by the authors."}}
 
 ## Appendix A: Prompts
-The full system prompt and one rendered example per view are in `docs/rendered_prompts_sample.md`. System-prompt SHA-256: `2456c375…` {{update if the gate forced a revision}}.
+The full system prompt and one rendered example per view are in `results/rendered_prompts_sample.md` (historical prompt v1.1). System-prompt SHA-256: `2456c375…` {{update if the gate forced a revision}}.
 
 ## Appendix B: Gate attempt log
 {{Copy the table from `runbook.md` §8: every attempt, including failures.}}

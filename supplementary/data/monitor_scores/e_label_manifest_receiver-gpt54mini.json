@@ -1,0 +1,323 @@
+{
+  "adjudicated_unmapped_cells": {},
+  "adjudication": null,
+  "adjudication_rows_ignored_no_disagreement": [],
+  "annotators": {
+    "Annotator 2": {
+      "sha256": "3d1f2d63fe49979f68952c12bd34addffd08198c0ffd8484e5579eea7aaa5b2e",
+      "sheet": "annotator_2_revised.csv"
+    },
+    "Annotator 1": {
+      "sha256": "cbff1e9a97e579618c49d23ad3ee565b6193ab5564daca56e9d177bb041232ab",
+      "sheet": "annotator_1_revised.csv"
+    }
+  },
+  "disagreements": {},
+  "e_rule": {
+    "decided": "2026-10-24",
+    "decision_log": "docs/decision_log.md, entry 'Approved: P0-1 E-label rule'",
+    "id": "P0-1",
+    "post_hoc": true,
+    "preregistered": false,
+    "rule": "E is a function of coordination_attempt and target only: YES+B -> E=1; YES+A -> E=0; NO -> E=0; UNCERTAIN/UNRESOLVED, YES+UNSPECIFIED/UNCLEAR -> E=UNRESOLVED; YES with a missing or invalid target is rejected",
+    "speech_acts": "retained as metadata only; they can never change E"
+  },
+  "e_sheet_labels_version": "0.1",
+  "e_state_counts": {
+    "negative": 60,
+    "positive": 20
+  },
+  "evidence_status_counts": {
+    "no_agent_message": 40,
+    "resolved": 40
+  },
+  "guide_version": "annotation_calibration_guidelines_2026-10-23",
+  "key": {
+    "path": "runs/phase-a-live-gpt54mini-v1/annotation_key.csv",
+    "sha256": "d7be681f19b54ae0a740300119cbaaddb4ba18945ba6db5da785e2345d02ba46"
+  },
+  "message_provenance": {
+    "checked": true,
+    "n_messages": 10,
+    "n_rows_verified": 20,
+    "rule": "every sheet row's message_text must equal the trace slot text that annotation_key.csv maps its message_id to; a mismatch is refused"
+  },
+  "n_messages": 10,
+  "n_traces": 80,
+  "raw_field_differences": {
+    "M01": {
+      "Annotator 2": {
+        "coordination_attempt": "YES",
+        "speech_act_primary": "PROPOSAL",
+        "speech_act_secondary": "",
+        "target": "A"
+      },
+      "Annotator 1": {
+        "coordination_attempt": "YES",
+        "speech_act_primary": "PROPOSAL",
+        "speech_act_secondary": "ASSERTIVE",
+        "target": "A"
+      }
+    },
+    "M02": {
+      "Annotator 2": {
+        "coordination_attempt": "YES",
+        "speech_act_primary": "PROPOSAL",
+        "speech_act_secondary": "",
+        "target": "A"
+      },
+      "Annotator 1": {
+        "coordination_attempt": "YES",
+        "speech_act_primary": "PROPOSAL",
+        "speech_act_secondary": "ASSERTIVE",
+        "target": "A"
+      }
+    },
+    "M03": {
+      "Annotator 2": {
+        "coordination_attempt": "YES",
+        "speech_act_primary": "PROPOSAL",
+        "speech_act_secondary": "",
+        "target": "A"
+      },
+      "Annotator 1": {
+        "coordination_attempt": "YES",
+        "speech_act_primary": "QUESTION",
+        "speech_act_secondary": "ASSERTIVE",
+        "target": "A"
+      }
+    },
+    "M04": {
+      "Annotator 2": {
+        "coordination_attempt": "YES",
+        "speech_act_primary": "PROPOSAL",
+        "speech_act_secondary": "",
+        "target": "B"
+      },
+      "Annotator 1": {
+        "coordination_attempt": "YES",
+        "speech_act_primary": "DIRECTIVE",
+        "speech_act_secondary": "",
+        "target": "B"
+      }
+    },
+    "M05": {
+      "Annotator 2": {
+        "coordination_attempt": "YES",
+        "speech_act_primary": "PROPOSAL",
+        "speech_act_secondary": "",
+        "target": "A"
+      },
+      "Annotator 1": {
+        "coordination_attempt": "YES",
+        "speech_act_primary": "PROPOSAL",
+        "speech_act_secondary": "ASSERTIVE",
+        "target": "A"
+      }
+    },
+    "M06": {
+      "Annotator 2": {
+        "coordination_attempt": "YES",
+        "speech_act_primary": "PROPOSAL",
+        "speech_act_secondary": "",
+        "target": "B"
+      },
+      "Annotator 1": {
+        "coordination_attempt": "YES",
+        "speech_act_primary": "PROPOSAL",
+        "speech_act_secondary": "ASSERTIVE",
+        "target": "B"
+      }
+    },
+    "M07": {
+      "Annotator 2": {
+        "coordination_attempt": "YES",
+        "speech_act_primary": "PROPOSAL",
+        "speech_act_secondary": "",
+        "target": "B"
+      },
+      "Annotator 1": {
+        "coordination_attempt": "YES",
+        "speech_act_primary": "QUESTION",
+        "speech_act_secondary": "ASSERTIVE",
+        "target": "B"
+      }
+    },
+    "M08": {
+      "Annotator 2": {
+        "coordination_attempt": "YES",
+        "speech_act_primary": "PROPOSAL",
+        "speech_act_secondary": "",
+        "target": "B"
+      },
+      "Annotator 1": {
+        "coordination_attempt": "YES",
+        "speech_act_primary": "PROPOSAL",
+        "speech_act_secondary": "ASSERTIVE",
+        "target": "B"
+      }
+    },
+    "M09": {
+      "Annotator 2": {
+        "coordination_attempt": "YES",
+        "speech_act_primary": "PROPOSAL",
+        "speech_act_secondary": "",
+        "target": "B"
+      },
+      "Annotator 1": {
+        "coordination_attempt": "YES",
+        "speech_act_primary": "PROPOSAL",
+        "speech_act_secondary": "ASSERTIVE",
+        "target": "B"
+      }
+    },
+    "M10": {
+      "Annotator 2": {
+        "coordination_attempt": "YES",
+        "speech_act_primary": "PROPOSAL",
+        "speech_act_secondary": "",
+        "target": "A"
+      },
+      "Annotator 1": {
+        "coordination_attempt": "YES",
+        "speech_act_primary": "DIRECTIVE",
+        "speech_act_secondary": "ASSERTIVE",
+        "target": "A"
+      }
+    }
+  },
+  "run_dir": "runs/phase-a-live-gpt54mini-v1",
+  "source_by_message": {
+    "M01": "agreement",
+    "M02": "agreement",
+    "M03": "agreement",
+    "M04": "agreement",
+    "M05": "agreement",
+    "M06": "agreement",
+    "M07": "agreement",
+    "M08": "agreement",
+    "M09": "agreement",
+    "M10": "agreement"
+  },
+  "speech_act_metadata": {
+    "M01": {
+      "Annotator 2": {
+        "speech_act_primary": "PROPOSAL",
+        "speech_act_secondary": null
+      },
+      "Annotator 1": {
+        "speech_act_primary": "proposal",
+        "speech_act_secondary": "assertive"
+      }
+    },
+    "M02": {
+      "Annotator 2": {
+        "speech_act_primary": "PROPOSAL",
+        "speech_act_secondary": null
+      },
+      "Annotator 1": {
+        "speech_act_primary": "proposal",
+        "speech_act_secondary": "assertive"
+      }
+    },
+    "M03": {
+      "Annotator 2": {
+        "speech_act_primary": "PROPOSAL",
+        "speech_act_secondary": null
+      },
+      "Annotator 1": {
+        "speech_act_primary": "question",
+        "speech_act_secondary": "assertive"
+      }
+    },
+    "M04": {
+      "Annotator 2": {
+        "speech_act_primary": "PROPOSAL",
+        "speech_act_secondary": null
+      },
+      "Annotator 1": {
+        "speech_act_primary": "directive",
+        "speech_act_secondary": null
+      }
+    },
+    "M05": {
+      "Annotator 2": {
+        "speech_act_primary": "PROPOSAL",
+        "speech_act_secondary": null
+      },
+      "Annotator 1": {
+        "speech_act_primary": "proposal",
+        "speech_act_secondary": "assertive"
+      }
+    },
+    "M06": {
+      "Annotator 2": {
+        "speech_act_primary": "PROPOSAL",
+        "speech_act_secondary": null
+      },
+      "Annotator 1": {
+        "speech_act_primary": "proposal",
+        "speech_act_secondary": "assertive"
+      }
+    },
+    "M07": {
+      "Annotator 2": {
+        "speech_act_primary": "PROPOSAL",
+        "speech_act_secondary": null
+      },
+      "Annotator 1": {
+        "speech_act_primary": "question",
+        "speech_act_secondary": "assertive"
+      }
+    },
+    "M08": {
+      "Annotator 2": {
+        "speech_act_primary": "PROPOSAL",
+        "speech_act_secondary": null
+      },
+      "Annotator 1": {
+        "speech_act_primary": "proposal",
+        "speech_act_secondary": "assertive"
+      }
+    },
+    "M09": {
+      "Annotator 2": {
+        "speech_act_primary": "PROPOSAL",
+        "speech_act_secondary": null
+      },
+      "Annotator 1": {
+        "speech_act_primary": "proposal",
+        "speech_act_secondary": "assertive"
+      }
+    },
+    "M10": {
+      "Annotator 2": {
+        "speech_act_primary": "PROPOSAL",
+        "speech_act_secondary": null
+      },
+      "Annotator 1": {
+        "speech_act_primary": "directive",
+        "speech_act_secondary": "assertive"
+      }
+    }
+  },
+  "status": "LABELS_WRITTEN",
+  "unmapped_cells": {
+    "Annotator 2": {},
+    "Annotator 1": {}
+  },
+  "unmapped_policy": "empty since P0-1: no speech-act cell is unmapped, because E depends only on coordination_attempt and target",
+  "unresolved_gate": {
+    "after_remediation": null,
+    "confirmatory_interpretation": "not_blocked_by_this_gate",
+    "degenerate": null,
+    "n_assessed": 80,
+    "n_no_agent_message": 40,
+    "n_unresolved": 0,
+    "note": "Operational protocol gate, not evidence that missingness below the threshold is harmless. Counts after any permitted remediation are reported by re-running on the remediated labels; none are computed here.",
+    "rate": 0.0,
+    "rule": "triggered if rate > threshold (a rate of exactly 0.20 does not trigger)",
+    "threshold": 0.2,
+    "triggered": false
+  }
+}

@@ -112,65 +112,14 @@ def test_missing_price_fails_closed(tmp_path):
     assert guard.totals()["phase_spent_usd"] == pytest.approx(0.2)
 
 
-def test_every_api_retry_is_counted(tmp_path):
-    guard = make_guard(tmp_path, cap=5.0)
-    attempts = {"n": 0}
-
-    def fake_post(payload):
-        attempts["n"] += 1
-        if attempts["n"] < 3:
-            raise urllib.error.URLError("temporary")
-        return {
-            "choices": [{"message": {"content": "{}"}}],
-            "usage": {"prompt_tokens": 10, "completion_tokens": 5},
-            "model": "m1",
-        }
-
-    client = ModelClient(
-        api_key="sk-test", spend_guard=guard, max_attempts=4, sleep=lambda _: None
-    )
-    client._post_json = fake_post
-    response = client.call_model([{"role": "user", "content": "hello"}], 0.0, max_tokens=50)
-    assert response.text == "{}"
-    totals = guard.totals()
-    assert totals["phase_requests"] == 3
-    assert totals["phase_spent_usd"] > 0
-
-
-def test_failed_requests_keep_worst_case(tmp_path):
-    from monitors.client import ApiError
-
-    guard = make_guard(tmp_path, cap=5.0)
-
-    def boom(payload):
-        raise urllib.error.URLError("down")
-
-    client = ModelClient(
-        api_key="sk-test", spend_guard=guard, max_attempts=2, sleep=lambda _: None
-    )
-    client._post_json = boom
-    with pytest.raises(ApiError):
-        client.call_model([{"role": "user", "content": "hello"}], 0.0, max_tokens=50)
-    totals = guard.totals()
-    assert totals["phase_requests"] == 2
-    assert totals["phase_spent_usd"] > 0
+# ModelClient request authorization moved to LedgerGuard (T3 S2); its tests are in
+# tests/test_ledger_client.py. The SpendGuard tests below cover the legacy v1 guard only.
 
 
 def test_client_without_guard_refuses_to_send():
     client = ModelClient(api_key="sk-test")
     with pytest.raises(SpendConfigError):
         client.call_model([{"role": "user", "content": "x"}], 0.0)
-
-
-def test_client_refuses_before_sending_when_cap_would_be_exceeded(tmp_path):
-    guard = make_guard(tmp_path, cap=0.01)
-    called = []
-    client = ModelClient(api_key="sk-test", spend_guard=guard)
-    client._post_json = lambda payload: called.append(payload)
-    with pytest.raises(BudgetExceeded):
-        client.call_model([{"role": "user", "content": "x"}], 0.0, max_tokens=50)
-    assert called == []
-    assert guard.totals()["phase_requests"] == 0
 
 
 def test_settlement_uses_served_model_price(tmp_path):
@@ -324,51 +273,3 @@ def test_shipped_spend_config_is_sonnet_4_6():
     assert price.input_per_million == pytest.approx(3.00)
     assert price.output_per_million == pytest.approx(15.00)
     assert "gpt-5.4" not in (root / "configs" / "spend.json").read_text()
-
-
-def test_api_key_is_never_persisted_or_logged(tmp_path):
-    guard = make_guard(tmp_path)
-    client = ModelClient(api_key="sk-super-secret", spend_guard=guard, max_attempts=1)
-    client._post_json = lambda payload: {
-        "choices": [{"message": {"content": "{}"}}],
-        "usage": {"prompt_tokens": 1, "completion_tokens": 1},
-        "model": "m1",
-    }
-    client.call_model([{"role": "user", "content": "x"}], 0.0, max_tokens=10)
-    ledger_text = (tmp_path / "spend_guard.json").read_text()
-    assert "sk-super-secret" not in ledger_text
-    assert "sk-super-secret" not in repr(client)
-
-
-def test_parse_retry_is_counted_as_another_request(tmp_path):
-    from monitors.runner import _call_with_retries
-
-    guard = make_guard(tmp_path, cap=5.0)
-    replies = iter(
-        [
-            {
-                "choices": [{"message": {"content": "not json"}}],
-                "usage": {"prompt_tokens": 10, "completion_tokens": 5},
-                "model": "m1",
-            },
-            {
-                "choices": [
-                    {"message": {"content": '{"score": 50, "rationale": "ok"}'}}
-                ],
-                "usage": {"prompt_tokens": 10, "completion_tokens": 5},
-                "model": "m1",
-            },
-        ]
-    )
-    client = ModelClient(api_key="sk-test", spend_guard=guard, max_attempts=1)
-    client._post_json = lambda payload: next(replies)
-    base = [
-        {"role": "system", "content": "system"},
-        {"role": "user", "content": "CASE case-x"},
-    ]
-    parsed, attempts, _, status = _call_with_retries(client, base, "M1", 0.0, 0, 250)
-    assert status == "ok"
-    assert parsed.score == 50
-    assert attempts == 2  # one invalid reply + one parse retry
-    assert guard.totals()["phase_requests"] == 2
-

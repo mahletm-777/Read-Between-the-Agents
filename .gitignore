@@ -35,3 +35,17 @@ logs/
 
 # Local secrets
 .env
+
+# --- Spend ledgers, guards and locks (never released, never committed) --------
+# Budget/billing state. Must never appear in a release package or a commit.
+**/ledger.json
+**/ledger.json.*
+**/*spend_guard.json
+**/*spend_guard.json.*
+**/spend/
+**/spend_e1/
+
+# --- Raw provider request/response payloads (never released) -----------------
+runs/*/raw*/
+experiments/*/raw*/
+results/*/raw*/

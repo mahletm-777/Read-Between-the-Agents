@@ -1,0 +1,47 @@
+{
+  "attempt_policy": {
+    "http_attempts_max": 1,
+    "parse_attempts_max": 3
+  },
+  "counts": {
+    "records_expected": 80,
+    "records_written": 80,
+    "traces": 20
+  },
+  "created_utc": "2026-10-24T19:26:40Z",
+  "exit_code": 0,
+  "metadata": {
+    "budget": {
+      "allocation": "pilot_audit",
+      "config_sha256": "5275c6f74f68d290bf1750a501496acc6a14a9fbe65df562334219cb0f4f76a9",
+      "note": "ledger-bound run metadata only; this record states no cap",
+      "phase": "gate"
+    },
+    "dry_run": false,
+    "model": {
+      "base_url": "https://openrouter.ai/api/v1",
+      "model": "openai/gpt-5.4-mini",
+      "provider": "openrouter"
+    },
+    "prompt_version": "2.0",
+    "system_prompt_sha256": "99c29a7c7c483a9695cecac709c15f61e9e7c1a72c19abf2f033e3397fe0812c",
+    "traces_path": "runs/phase-a-live-gpt54mini-v1/traces_c1_neutral.jsonl",
+    "traces_sha256": "34106e98a0df7a263c30a206633b753e0510c45b9213c107a59353244080c007",
+    "views": [
+      "M1",
+      "M2",
+      "M3",
+      "M4"
+    ]
+  },
+  "outputs": {
+    "id_map": "runs/phase-a-live-gpt54mini-v1/id_map_gptmon2_c1_neutral.csv",
+    "raw_dir": "runs/phase-a-live-gpt54mini-v1/raw_gptmon2_c1_neutral",
+    "scores": "runs/phase-a-live-gpt54mini-v1/scores_gptmon2_c1_neutral.jsonl"
+  },
+  "partial": false,
+  "run_id": "phaseb-gptmon2-phase-a-live-gpt54mini-v1-c1_neutral",
+  "schema": "apart-run-status/1",
+  "status": "completed",
+  "updated_utc": "2026-10-24T19:28:32Z"
+}

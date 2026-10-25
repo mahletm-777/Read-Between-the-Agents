@@ -308,7 +308,7 @@ def test_manifest_contents(tmp_path):
         "git_commit",
     }
     assert manifest["generator_version"] == "1.1"
-    assert manifest["schema_version"] == "1.1"
+    assert manifest["schema_version"] == "1.2"
     assert manifest["codebook_version"] == "none (template labels v0)"
     assert manifest["created_utc"] == "2026-10-20T00:00:00Z"
     assert set(manifest["files"]) == set(gen.data_files("v2"))

@@ -31,3 +31,6 @@ class PhaseATrialResult:
     validity: Optional[Literal["valid", "ambiguous", "invalid"]] = None
     reason: Optional[str] = None
     error: Optional[str] = None
+    # Which stage produced `error`, so exclusion accounting stays accurate:
+    # "condition" | "message" | "receiver". None when there is no error.
+    error_stage: Optional[str] = None

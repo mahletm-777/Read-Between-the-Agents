@@ -1,0 +1,23 @@
+# Supplementary package environment.
+#
+# The reproduction path (analysis/run_all.py) uses the Python STANDARD LIBRARY ONLY.
+# No third-party package is required to regenerate any reported table.
+#
+# matplotlib is optional and is needed only for analysis/summary_figure.py.
+# Versions below are those the package was validated against (Python 3.14.8).
+#
+# This file is what `pip install -r` should use to get a clean environment for the
+# whole package: it also covers running the repository test suite, which is the
+# other offline check described in README.md.
+
+# --- required to run the repository test suite offline ------------------------
+pytest>=7.0
+
+# --- optional: figure regeneration only -------------------------------------
+matplotlib>=3.8
+
+# --- not required by this package -------------------------------------------
+# The live entry points in the main repository (scripts/run_monitors.py,
+# scripts/run_phase_a_live.py, scripts/run_experiment_e1.py --confirm-live) need
+# an OpenRouter API key in an untracked .env at the repository root. They are not
+# used to reproduce anything in supplementary/.
