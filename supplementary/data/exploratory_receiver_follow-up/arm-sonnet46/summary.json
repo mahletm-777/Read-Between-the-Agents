@@ -1,0 +1,45 @@
+{
+  "aggregate_budget": {
+    "atomic_across_ledgers": false,
+    "ceiling_micro": 2000000,
+    "committed_by_arm_micro": {
+      "gpt54mini": 0,
+      "sonnet46": 0
+    },
+    "committed_micro": 0,
+    "note": "Sum of the approved per-ledger caps, checked once, read-only, before dispatch. Not an atomic cross-ledger budget controller and not a provider-side billing ceiling; the project E1 run lock is what prevents a concurrent run from racing this check.",
+    "projected_micro": 1176000,
+    "worst_case_micro": 1176000
+  },
+  "counts_by_status": {
+    "ambiguous": 0,
+    "failed": 0,
+    "invalid": 0,
+    "rejected": 0,
+    "valid": 80
+  },
+  "e1_arm": "sonnet46",
+  "error": null,
+  "exclusions": [],
+  "exit_code": 0,
+  "experiment": "e1",
+  "ledger_path": "/Users/mmolla/Desktop/APART Experiment/results/spend_e1/sonnet46/ledger.json",
+  "model_alias": "sonnet46",
+  "n_attempted": 80,
+  "n_failed": 0,
+  "n_not_attempted": 0,
+  "n_planned": 80,
+  "n_records": 80,
+  "n_valid_traces": 80,
+  "no_pooling": true,
+  "not_monitor_evaluation": true,
+  "plan_sha256": "c7891ec9aec8104867f5c5fde19836e88ebec6846ab87b3a0cce4ba137556aa2",
+  "plan_version": "e1-msg2x2-1.0",
+  "run_id": "e1-msg2x2-sonnet46-v1-20261025T030713Z",
+  "run_mode": "live",
+  "spend_config_path": "/Users/mmolla/Desktop/APART Experiment/configs/spend.json",
+  "status": "completed",
+  "stop_reason": null,
+  "supersedes_run_id": null,
+  "supersession_reason": null
+}

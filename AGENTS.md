@@ -20,16 +20,18 @@ workflow.
   pilot** (a small scoped batch of traces for inspection), and a
   **scientific evaluation** (a claim about communication effects, safety
   violations, deception, coordination, or monitor performance). See
-  `docs/open_questions.md` for the full distinction.
+  `docs/stage_definitions.md` for the full distinction.
 - Never represent scaffolding, synthetic/mock data, placeholder stimuli, or
   successful execution as evidence for a scientific hypothesis.
 - Do not invent or silently resolve research decisions (estimands, safety
   definitions, protocol authority, monitor definitions, annotation
   schemas, scenario content). If a decision is needed, raise it rather
   than picking one.
-- Record confirmed decisions in `docs/decision_log.md` and unresolved
-  questions in `docs/open_questions.md`. Do not retroactively reinterpret a
-  proposal in either file as an approval.
+- Record confirmed decisions in `docs/decision_log.md`. Do not retroactively
+  reinterpret a proposal in that file as an approval. (The former
+  `docs/open_questions.md` register was retired in the release tidy-up; its
+  text remains in git history and the stage distinction it carried now lives in
+  `docs/stage_definitions.md`.)
 - Do not change experiment semantics, scientific labels, primary
   estimands, message treatments, or monitor definitions without explicit,
   recorded approval.

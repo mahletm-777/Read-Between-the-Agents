@@ -9,8 +9,9 @@ changes to a work-in-progress experiment - not rapid feature development.
 2. Read `AGENTS.md` - shared, tool-agnostic rules for any coding agent
    working in this repository; they apply to human contributors too.
 3. Read `docs/decision_log.md` - it is the record of confirmed decisions.
-4. Read `docs/open_questions.md` - the register of unresolved research and
-   process questions, with what each one blocks.
+4. Read `docs/stage_definitions.md` - it separates an engineering baseline, an
+   experimental pilot, and a scientific evaluation, and says what each one
+   licenses you to claim.
 5. Note the distinction between **confirmed**, **proposed**, and **unresolved**
    material: `docs/experimental_protocol_proposed.md` is a proposal, not an
    approved protocol.
