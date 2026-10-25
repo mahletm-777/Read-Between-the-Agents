@@ -1,6 +1,5 @@
 # Reading Between the Agents: Message and Action Evidence in Coordination Monitoring
 
-**Mahlet Molla, Lydia Lee** (Independent Researchers)
 
 Research conducted at the AI Collusion Research Sprint, October 2026 (Apart Research).
 
